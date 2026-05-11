@@ -1,26 +1,110 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 40 33% 97%;
+  --foreground: 160 15% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 160 15% 12%;
+  --popover: 40 33% 99%;
+  --popover-foreground: 160 15% 12%;
+  --primary: 158 35% 32%;
+  --primary-foreground: 40 33% 97%;
+  --secondary: 40 25% 92%;
+  --secondary-foreground: 160 15% 18%;
+  --muted: 40 20% 90%;
+  --muted-foreground: 160 8% 42%;
+  --accent: 38 55% 55%;
+  --accent-foreground: 160 15% 12%;
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 40 33% 97%;
+  --border: 40 20% 86%;
+  --input: 40 20% 88%;
+  --ring: 158 35% 32%;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 160 18% 8%;
+  --foreground: 40 30% 92%;
+  --card: 160 16% 11%;
+  --card-foreground: 40 30% 92%;
+  --popover: 160 16% 11%;
+  --popover-foreground: 40 30% 92%;
+  --primary: 158 30% 55%;
+  --primary-foreground: 160 18% 8%;
+  --secondary: 160 12% 16%;
+  --secondary-foreground: 40 30% 92%;
+  --muted: 160 12% 16%;
+  --muted-foreground: 40 12% 62%;
+  --accent: 38 50% 60%;
+  --accent-foreground: 160 18% 8%;
+  --destructive: 0 50% 45%;
+  --destructive-foreground: 40 30% 92%;
+  --border: 160 12% 18%;
+  --input: 160 12% 18%;
+  --ring: 158 30% 55%;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-source-serif);
+  --font-arabic: var(--font-amiri-quran);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  [lang="ar"] {
+    font-family: var(--font-arabic), serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .font-arabic {
+    font-family: var(--font-arabic), serif;
+  }
+  .font-serif {
+    font-family: var(--font-serif), ui-serif, Georgia, serif;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
