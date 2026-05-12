@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiFetch, hasAccessToken, shouldUseMockFallback } from "@/lib/api/client";
 import { mockDb, persistDb } from "@/lib/mocks/db";
 import { simulateNetwork } from "@/lib/mocks/delay";
+import { determineProfile } from "@/lib/services/profile.service";
 
 export const UserSchema = z.object({
   id: z.string(),
@@ -27,7 +28,7 @@ export const OnboardingPayloadSchema = z.object({
   struggles: z.array(z.string()),
   preferredTime: z.string(),
   motivation: z.string(),
-  category: z.string(),
+  category: z.string().optional(),
 });
 export type OnboardingPayload = z.infer<typeof OnboardingPayloadSchema>;
 
@@ -106,6 +107,7 @@ export async function getUser(): Promise<User> {
 
 export async function completeOnboarding(payload: OnboardingPayload): Promise<User> {
   OnboardingPayloadSchema.parse(payload);
+  const profile = await determineProfile(payload);
 
   if (hasAccessToken()) {
     try {
@@ -114,7 +116,7 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
         method: "PATCH",
         body: JSON.stringify({
           step: 5,
-          user_type: deriveCategory(payload),
+          user_type: profile.category,
           reading_frequency: payload.frequency,
           preferred_reading_time: payload.preferredTime,
           motivation_type: payload.motivation,
@@ -135,20 +137,12 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
   mockDb.user = {
     ...mockDb.user,
     onboarded: true,
-    category: deriveCategory(payload),
+    category: profile.category,
+    identity: profile.title,
     preferredTime: derivePreferredTime(payload.preferredTime),
   };
   persistDb();
   return UserSchema.parse(mockDb.user);
-}
-
-function deriveCategory(p: OnboardingPayload): User["category"] {
-  if (p.category === "new_muslim") return "new_muslim";
-  if (p.frequency === "starting") return "beginner";
-  if (p.frequency === "ramadan_only" || p.struggles.includes("consistency"))
-    return "inconsistent_reader";
-  if (p.struggles.includes("time")) return "busy_professional";
-  return "deep_learner";
 }
 
 function derivePreferredTime(t: string): User["preferredTime"] {

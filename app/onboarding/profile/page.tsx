@@ -9,38 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 import { useCompleteOnboarding } from "@/hooks/use-complete-onboarding";
-
-function deriveLabel(draft: ReturnType<typeof useOnboardingDraft.getState>) {
-  const struggles = draft.struggles ?? [];
-  if (draft.frequency === "starting") {
-    return {
-      title: "Beginner",
-      tagline: "Step by step. The first verses are the foundation of a lifetime.",
-    };
-  }
-  if (draft.frequency === "ramadan_only" || struggles.includes("consistency")) {
-    return {
-      title: "Inconsistent Reader",
-      tagline: "We'll build a path that meets you on the days motivation is quiet.",
-    };
-  }
-  if (struggles.includes("time")) {
-    return {
-      title: "Busy Reader",
-      tagline: "Five minutes, anchored to one moment of your day.",
-    };
-  }
-  if (draft.motivation === "knowledge") {
-    return {
-      title: "Deep Learner",
-      tagline: "We'll pair each verse with context and reflection.",
-    };
-  }
-  return {
-    title: "Consistent Reader",
-    tagline: "You're already walking. We'll keep the rhythm steady.",
-  };
-}
+import { determineProfileFromAnswers } from "@/lib/profile/determine-profile";
+import {
+  determineProfile,
+  type ProfileDetermination,
+} from "@/lib/services/profile.service";
 
 export default function ProfileStep() {
   const router = useRouter();
@@ -48,7 +21,55 @@ export default function ProfileStep() {
   const mutation = useCompleteOnboarding();
   const [isFinishing, setIsFinishing] = useState(false);
 
-  const profile = useMemo(() => deriveLabel(draft), [draft]);
+  const answers = useMemo(() => {
+    if (
+      !draft.frequency ||
+      !draft.struggles?.length ||
+      !draft.preferredTime ||
+      !draft.motivation
+    ) {
+      return null;
+    }
+
+    return {
+      frequency: draft.frequency,
+      struggles: draft.struggles,
+      preferredTime: draft.preferredTime,
+      motivation: draft.motivation,
+      category: draft.category,
+    };
+  }, [
+    draft.category,
+    draft.frequency,
+    draft.motivation,
+    draft.preferredTime,
+    draft.struggles,
+  ]);
+
+  const localProfile = useMemo(
+    () => (answers ? determineProfileFromAnswers(answers) : null),
+    [answers],
+  );
+  const answersKey = useMemo(() => JSON.stringify(answers), [answers]);
+  const [remoteProfile, setRemoteProfile] = useState<{
+    key: string;
+    profile: ProfileDetermination;
+  } | null>(null);
+  const visibleProfile =
+    remoteProfile?.key === answersKey ? remoteProfile.profile : localProfile;
+
+  useEffect(() => {
+    if (!answers) return;
+    let alive = true;
+
+    determineProfile(answers).then((nextProfile) => {
+      if (alive) setRemoteProfile({ key: answersKey, profile: nextProfile });
+    });
+
+    return () => {
+      alive = false;
+    };
+  }, [answers, answersKey]);
 
   useEffect(() => {
     if (isFinishing) return;
@@ -85,6 +106,7 @@ export default function ProfileStep() {
       router.replace("/onboarding/motivation");
       return;
     }
+
     setIsFinishing(true);
     try {
       await mutation.mutateAsync({
@@ -92,7 +114,7 @@ export default function ProfileStep() {
         struggles: draft.struggles ?? [],
         preferredTime: draft.preferredTime,
         motivation: draft.motivation,
-        category: profile.title.toLowerCase().replace(/\s+/g, "_"),
+        category: visibleProfile?.category,
       });
       router.replace("/home");
       draft.reset();
@@ -122,15 +144,31 @@ export default function ProfileStep() {
               </span>
             </div>
             <p className="mt-3 font-serif text-3xl leading-tight">
-              {profile.title}
+              {visibleProfile?.title ?? "Personalized Reader"}
             </p>
             <p className="mt-3 font-serif text-base leading-relaxed text-muted-foreground">
-              {profile.tagline}
+              {visibleProfile?.tagline ??
+                "We'll shape your path from your answers."}
             </p>
+            {visibleProfile ? (
+              <div className="mt-5 space-y-3 rounded-lg border border-border/70 bg-background/60 p-4">
+                <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider">
+                  <span className="text-muted-foreground">Profile match</span>
+                  <span className="text-foreground">
+                    {visibleProfile.confidence}% {visibleProfile.confidenceLabel}
+                  </span>
+                </div>
+                <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                  {visibleProfile.reasons.slice(0, 3).map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </Card>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This isn&apos;t a label — it&apos;s a starting shape. Your path will adapt
-            as you read, reflect, and return.
+            This isn&apos;t a label - it&apos;s a starting shape. Your path will
+            adapt as you read, reflect, and return.
           </p>
         </div>
         <Button
