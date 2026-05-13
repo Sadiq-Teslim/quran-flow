@@ -65,7 +65,7 @@ function mapApiUser(
   const category = UserSchema.shape.category.safeParse(user.user_type).success
     ? user.user_type
     : "beginner";
-  const preferredTime = derivePreferredTime(user.preferred_reading_time);
+  const preferredTime = mapBackendPreferredTime(user.preferred_reading_time);
   const name =
     user.first_name ??
     user.username ??
@@ -117,10 +117,11 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
         body: JSON.stringify({
           step: 5,
           user_type: profile.category,
-          reading_frequency: payload.frequency,
-          preferred_reading_time: payload.preferredTime,
-          motivation_type: payload.motivation,
+          reading_frequency: mapBackendReadingFrequency(payload.frequency),
+          preferred_reading_time: mapBackendPreferredTime(payload.preferredTime),
+          motivation_type: mapBackendMotivation(payload.motivation),
           personal_struggles: payload.struggles,
+          daily_verse_target: profile.plan.noZeroDayVerses,
         }),
       });
       await apiFetch("/api/v1/users/me/onboarding/complete", {
@@ -148,4 +149,38 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
 function derivePreferredTime(t: string): User["preferredTime"] {
   const allowed: User["preferredTime"][] = ["fajr", "morning", "afternoon", "maghrib", "night"];
   return (allowed.includes(t as User["preferredTime"]) ? t : "fajr") as User["preferredTime"];
+}
+
+function mapBackendPreferredTime(t: string) {
+  const values: Record<string, string> = {
+    fajr: "fajr",
+    morning: "fajr",
+    afternoon: "midday",
+    midday: "afternoon",
+    maghrib: "evening",
+    evening: "maghrib",
+    night: "night",
+    flexible: "fajr",
+  };
+  return values[t] ?? "flexible";
+}
+
+function mapBackendReadingFrequency(frequency: string) {
+  const values: Record<string, string> = {
+    daily: "daily",
+    weekly: "weekly",
+    ramadan_only: "rarely",
+    starting: "rarely",
+  };
+  return values[frequency] ?? "weekly";
+}
+
+function mapBackendMotivation(motivation: string) {
+  const values: Record<string, string> = {
+    closeness: "spiritual",
+    knowledge: "educational",
+    discipline: "habit",
+    guidance: "mixed",
+  };
+  return values[motivation] ?? "mixed";
 }
