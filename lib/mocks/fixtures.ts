@@ -13,6 +13,7 @@ export const mockUser: User = {
   preferredTime: "fajr",
   category: "busy_professional",
   onboarded: false,
+  isAnonymous: false,
 };
 
 export const mockVerses: Verse[] = [

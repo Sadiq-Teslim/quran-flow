@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiFetch, clearAuthTokens, storeAuthTokens } from "@/lib/api/client";
+import { clearProfileOverride } from "@/lib/services/user.service";
 
 export const SignupPayloadSchema = z.object({
   email: z.string().email(),
@@ -90,6 +91,7 @@ export async function logout() {
       method: "POST",
     });
   } finally {
+    clearProfileOverride();
     clearAuthTokens();
   }
 }

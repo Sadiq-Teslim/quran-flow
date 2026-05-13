@@ -2,7 +2,13 @@ import { z } from "zod";
 import { apiFetch, hasAccessToken, shouldUseMockFallback } from "@/lib/api/client";
 import { mockDb, persistDb } from "@/lib/mocks/db";
 import { simulateNetwork } from "@/lib/mocks/delay";
-import { determineProfile } from "@/lib/services/profile.service";
+import {
+  determineProfile,
+  ProfileDeterminationSchema,
+  type ProfileDetermination,
+} from "@/lib/services/profile.service";
+
+const PROFILE_OVERRIDE_KEY = "quranflow.profile_override";
 
 export const UserSchema = z.object({
   id: z.string(),
@@ -20,6 +26,7 @@ export const UserSchema = z.object({
     "new_muslim",
   ]),
   onboarded: z.boolean(),
+  isAnonymous: z.boolean().default(false),
 });
 export type User = z.infer<typeof UserSchema>;
 
@@ -41,6 +48,7 @@ const ApiUserSchema = z.object({
   user_type: z.string(),
   preferred_language: z.string(),
   preferred_reading_time: z.string(),
+  anonymous_mode: z.boolean().optional(),
 });
 
 const ApiOnboardingStatusSchema = z.object({
@@ -58,30 +66,72 @@ function identityFromUserType(userType: string) {
   return labels[userType] ?? "Quran Companion";
 }
 
+function getProfileOverride(): ProfileDetermination | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(PROFILE_OVERRIDE_KEY);
+    if (!raw) return null;
+    return ProfileDeterminationSchema.parse(JSON.parse(raw));
+  } catch {
+    localStorage.removeItem(PROFILE_OVERRIDE_KEY);
+    return null;
+  }
+}
+
+function saveProfileOverride(profile: ProfileDetermination) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PROFILE_OVERRIDE_KEY, JSON.stringify(profile));
+}
+
+export function clearProfileOverride() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PROFILE_OVERRIDE_KEY);
+}
+
+function displayNameFromUser(
+  user: z.infer<typeof ApiUserSchema>,
+  profile: ProfileDetermination | null,
+) {
+  if (user.first_name) return user.first_name;
+  if (user.username) return user.username;
+  if (user.anonymous_mode) return profile?.title ?? "Quran Companion";
+
+  const emailName = user.email.split("@")[0];
+  if (/^(guest|anonymous|anon)[-_]?\w*/i.test(emailName)) {
+    return profile?.title ?? "Quran Companion";
+  }
+
+  return emailName || profile?.title || "Quran Companion";
+}
+
 function mapApiUser(
   user: z.infer<typeof ApiUserSchema>,
   onboarded: boolean,
 ): User {
-  const category = UserSchema.shape.category.safeParse(user.user_type).success
-    ? user.user_type
-    : "beginner";
-  const preferredTime = mapBackendPreferredTime(user.preferred_reading_time);
-  const name =
-    user.first_name ??
-    user.username ??
-    user.email.split("@")[0] ??
-    "there";
+  const profileOverride = getProfileOverride();
+  const category = profileOverride?.category
+    ? profileOverride.category
+    : UserSchema.shape.category.safeParse(user.user_type).success
+      ? user.user_type
+      : "beginner";
+  const identity = profileOverride?.title
+    ? profileOverride.title
+    : identityFromUserType(category);
+  const name = displayNameFromUser(user, profileOverride);
+  const preferredTime = mapApiPreferredTime(user.preferred_reading_time);
 
   return UserSchema.parse({
     id: user.id,
     name,
-    email: user.email,
-    identity: identityFromUserType(category),
+    email: user.anonymous_mode ? "Synced anonymous session" : user.email,
+    identity,
     identityEarnedAt: new Date().toISOString().slice(0, 10),
     language: user.preferred_language,
     preferredTime,
     category,
     onboarded,
+    isAnonymous: Boolean(user.anonymous_mode),
   });
 }
 
@@ -108,6 +158,7 @@ export async function getUser(): Promise<User> {
 export async function completeOnboarding(payload: OnboardingPayload): Promise<User> {
   OnboardingPayloadSchema.parse(payload);
   const profile = await determineProfile(payload);
+  saveProfileOverride(profile);
 
   if (hasAccessToken()) {
     try {
@@ -118,7 +169,7 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
           step: 5,
           user_type: profile.category,
           reading_frequency: mapBackendReadingFrequency(payload.frequency),
-          preferred_reading_time: mapBackendPreferredTime(payload.preferredTime),
+          preferred_reading_time: mapToBackendPreferredTime(payload.preferredTime),
           motivation_type: mapBackendMotivation(payload.motivation),
           personal_struggles: payload.struggles,
           daily_verse_target: profile.plan.noZeroDayVerses,
@@ -151,18 +202,30 @@ function derivePreferredTime(t: string): User["preferredTime"] {
   return (allowed.includes(t as User["preferredTime"]) ? t : "fajr") as User["preferredTime"];
 }
 
-function mapBackendPreferredTime(t: string) {
-  const values: Record<string, string> = {
+function mapToBackendPreferredTime(t: string) {
+  const values: Record<string, "fajr" | "midday" | "evening" | "night" | "flexible"> = {
     fajr: "fajr",
     morning: "fajr",
     afternoon: "midday",
-    midday: "afternoon",
     maghrib: "evening",
+    night: "night",
+    flexible: "flexible",
+  };
+  return values[t] ?? "flexible";
+}
+
+function mapApiPreferredTime(t: string): User["preferredTime"] {
+  const values: Record<string, User["preferredTime"]> = {
+    fajr: "fajr",
+    midday: "afternoon",
     evening: "maghrib",
     night: "night",
     flexible: "fajr",
+    morning: "morning",
+    afternoon: "afternoon",
+    maghrib: "maghrib",
   };
-  return values[t] ?? "flexible";
+  return values[t] ?? "fajr";
 }
 
 function mapBackendReadingFrequency(frequency: string) {

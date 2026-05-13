@@ -40,12 +40,14 @@ export default function HomePage() {
           <Skeleton className="h-7 w-44" />
         ) : (
           <h1 className="font-serif text-3xl leading-tight tracking-tight">
-            {timeOfDayGreeting()}, {user.data?.name}.
+            {user.data?.isAnonymous
+              ? `${timeOfDayGreeting()}.`
+              : `${timeOfDayGreeting()}, ${user.data?.name}.`}
           </h1>
         )}
         {user.data?.identity ? (
           <div className="mt-2">
-            <IdentityBadge label={`You're a ${user.data.identity}`} />
+            <IdentityBadge label={`Your path: ${user.data.identity}`} />
           </div>
         ) : null}
       </header>
