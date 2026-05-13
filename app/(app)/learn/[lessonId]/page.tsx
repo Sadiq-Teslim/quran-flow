@@ -30,9 +30,9 @@ export default function LessonPage({
   }
 
   return (
-    <div className="pb-32">
+    <div className="pb-44">
       <ScreenHeader title="Lesson" back />
-      <div className="space-y-6 px-5 sm:px-6">
+      <div className="space-y-6 px-5 pr-14 sm:px-6">
         {lesson.isLoading || !lesson.data ? (
           <div className="space-y-4">
             <Skeleton className="h-6 w-32" />
@@ -65,7 +65,10 @@ export default function LessonPage({
         )}
       </div>
       {lesson.data ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[480px] border-t border-border/60 bg-background/95 p-4 backdrop-blur">
+        <div
+          className="fixed inset-x-0 z-30 mx-auto max-w-[480px] border-t border-border/60 bg-background/95 p-4 backdrop-blur"
+          style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+        >
           <Button
             size="xl"
             className="w-full"
