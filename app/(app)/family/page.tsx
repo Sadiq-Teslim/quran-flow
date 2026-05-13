@@ -62,8 +62,8 @@ export default function FamilyPage() {
         {!auth.isAuthenticated ? (
           <EmptyState
             icon={Users}
-            title="Connect account"
-            description="Family groups are stored on the backend."
+            title="Sign in to continue"
+            description="Create or join a family group to build a shared habit."
           />
         ) : families.isLoading ? (
           <Skeleton className="h-32 w-full rounded-2xl" />

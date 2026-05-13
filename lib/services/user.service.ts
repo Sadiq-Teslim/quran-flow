@@ -124,7 +124,7 @@ function mapApiUser(
   return UserSchema.parse({
     id: user.id,
     name,
-    email: user.anonymous_mode ? "Synced anonymous session" : user.email,
+    email: user.anonymous_mode ? "Private session" : user.email,
     identity,
     identityEarnedAt: new Date().toISOString().slice(0, 10),
     language: user.preferred_language,

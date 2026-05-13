@@ -30,7 +30,7 @@ export default function AccountabilityPage() {
 
   async function handleRequest() {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to use accountability.");
       return;
     }
     try {
@@ -64,8 +64,8 @@ export default function AccountabilityPage() {
         ) : !auth.isAuthenticated ? (
           <EmptyState
             icon={Handshake}
-            title="Connect account"
-            description="Partner matching and check-ins need a backend profile."
+            title="Sign in to continue"
+            description="Partner matching and check-ins need your QuranFlow profile."
           />
         ) : activePartner ? (
           <Card className="p-5">
@@ -76,7 +76,7 @@ export default function AccountabilityPage() {
               Partner status: {activePartner.status}
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Criteria: {activePartner.criteria.join(", ") || "backend selected"}
+              Criteria: {activePartner.criteria.join(", ") || "matched for you"}
             </p>
             <Button
               variant="secondary"
@@ -93,8 +93,8 @@ export default function AccountabilityPage() {
               Start with AI-based accountability.
             </p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              The backend currently supports phase 1 check-ins and partner matching
-              requests.
+              Start with a simple check-in system, then request a partner when
+              matching is available for you.
             </p>
             <Button
               className="mt-4 w-full"

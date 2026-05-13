@@ -20,8 +20,8 @@ export default function NewMuslimPage() {
         {!auth.isAuthenticated ? (
           <EmptyState
             icon={Compass}
-            title="Connect account"
-            description="The guided path is personalized through the backend."
+            title="Sign in to continue"
+            description="Your guided foundation path will be shaped around your profile."
           />
         ) : guided.isLoading ? (
           <Skeleton className="h-40 w-full rounded-2xl" />
@@ -93,7 +93,7 @@ export default function NewMuslimPage() {
           <EmptyState
             icon={Compass}
             title="No guide yet"
-            description="The backend returned no guided content for this profile."
+            description="Your foundation guide is not ready yet. Check back after your profile updates."
           />
         )}
       </div>

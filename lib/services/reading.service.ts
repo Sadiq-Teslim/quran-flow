@@ -177,11 +177,15 @@ function mapApiChapter(chapter: ApiChapter): Chapter {
 }
 
 export async function listChapters(): Promise<Chapter[]> {
-  const response = ApiChapterListSchema.parse(
-    await apiFetch<unknown>("/api/v1/quran/chapters?page=1&per_page=114"),
+  const responses = await Promise.all([
+    apiFetch<unknown>("/api/v1/quran/chapters?page=1&per_page=100"),
+    apiFetch<unknown>("/api/v1/quran/chapters?page=2&per_page=100"),
+  ]);
+  const chapters = responses.flatMap(
+    (response) => ApiChapterListSchema.parse(response).items,
   );
-  for (const chapter of response.items) chapterCache.set(chapter.number, chapter);
-  return response.items.map(mapApiChapter);
+  for (const chapter of chapters) chapterCache.set(chapter.number, chapter);
+  return chapters.map(mapApiChapter);
 }
 
 export async function searchVerses(query: string): Promise<Verse[]> {

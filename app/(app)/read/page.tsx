@@ -135,7 +135,8 @@ export default function ReadIndex() {
             </div>
           ) : (
             <Card className="p-5 text-sm text-muted-foreground">
-              Connect your account and log readings to see history.
+              No reading history yet. Open a verse and your completed readings
+              will appear here.
             </Card>
           )}
         </section>

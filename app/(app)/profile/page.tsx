@@ -65,7 +65,7 @@ export default function ProfilePage() {
                     {user.data.email}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {auth.isAuthenticated ? "Synced with backend" : "Demo profile"}
+                    {auth.isAuthenticated ? "Your QuranFlow account" : "Local profile"}
                   </p>
                 </>
               )}
@@ -244,7 +244,7 @@ function SecurityPanel({ auth }: { auth: ReturnType<typeof useAuth> }) {
           <div className="min-w-0 flex-1">
             <p className="font-medium leading-tight">Two-factor authentication</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Use the backend 2FA enrollment and confirmation endpoints.
+              Add an extra layer of protection to your QuranFlow account.
             </p>
           </div>
         </div>
@@ -377,10 +377,10 @@ function AuthPanel({
           <div className="flex items-start gap-4">
             <ShieldCheck className="mt-0.5 size-5 text-primary" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="font-medium leading-tight">Backend connected</p>
+              <p className="font-medium leading-tight">Account active</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Reading plans, streaks, progress, and reflections now sync through
-                QuranFlow API.
+                Your reading plans, streaks, progress, and reflections are saved
+                to your QuranFlow account.
               </p>
             </div>
           </div>
@@ -430,8 +430,7 @@ function AuthPanel({
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Connect to the Render backend to replace demo state with your live QuranFlow
-          profile.
+          Sign in to continue your QuranFlow journey across devices.
         </p>
 
         <form className="mt-4 space-y-3" onSubmit={handleSubmit}>

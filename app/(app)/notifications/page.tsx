@@ -27,7 +27,7 @@ export default function NotificationsPage() {
 
   async function handleSaveTime(time: string) {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to save notification settings.");
       return;
     }
     try {
@@ -92,8 +92,8 @@ export default function NotificationsPage() {
         ) : !auth.isAuthenticated ? (
           <EmptyState
             icon={Bell}
-            title="Connect account"
-            description="Notifications are stored on the backend."
+            title="Sign in to continue"
+            description="Your reminders and nudges will appear here."
           />
         ) : notifications.data?.items.length ? (
           <div className="space-y-3">

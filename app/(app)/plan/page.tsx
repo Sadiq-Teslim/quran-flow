@@ -26,7 +26,7 @@ export default function PlanPage() {
 
   async function handleGenerate() {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to generate a plan.");
       return;
     }
     try {
@@ -39,7 +39,7 @@ export default function PlanPage() {
 
   async function handlePersonalize() {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to personalize your plan.");
       return;
     }
     try {
@@ -55,7 +55,7 @@ export default function PlanPage() {
 
   async function handleReEntry() {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to restart your plan.");
       return;
     }
     try {
@@ -81,7 +81,8 @@ export default function PlanPage() {
             Generate a plan from your profile and habit history.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            The backend adjusts daily verse targets, difficulty, and reading time.
+            QuranFlow adjusts daily verse targets, difficulty, and reading time
+            around your profile.
           </p>
           <Button
             className="mt-5 w-full"
@@ -148,7 +149,8 @@ export default function PlanPage() {
             </div>
           ) : (
             <Card className="p-5 text-sm text-muted-foreground">
-              Connect your account, or wait for learning modules to be seeded.
+              No recommendations yet. Complete more reading or learning sessions
+              and check back here.
             </Card>
           )}
         </section>

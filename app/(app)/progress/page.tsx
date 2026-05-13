@@ -87,7 +87,7 @@ export default function ProgressPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="font-serif text-xl leading-tight">Backend analytics</h2>
+          <h2 className="font-serif text-xl leading-tight">Consistency analytics</h2>
           {analytics.isLoading || !analytics.data ? (
             <Skeleton className="h-28 w-full rounded-2xl" />
           ) : (

@@ -27,7 +27,7 @@ export default function TajweedPage() {
 
   async function handleSubmit() {
     if (!auth.isAuthenticated) {
-      toast.error("Connect your account first.");
+      toast.error("Sign in to save tajweed feedback.");
       return;
     }
     try {

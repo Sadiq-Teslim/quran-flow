@@ -102,7 +102,7 @@ export async function getRecommendations(limit = 3): Promise<Recommendation[]> {
 
 export async function getFallbackCheckin() {
   if (!hasAccessToken()) {
-    return "Connect your account to receive AI check-ins.";
+    return "Sign in to receive personalized check-ins.";
   }
   try {
     const response = ApiFallbackCheckinSchema.parse(

@@ -123,9 +123,7 @@ function VerseLocalizations({ verseId }: { verseId?: number }) {
   const localizations = useVerseLocalizations(verseId);
 
   if (!verseId) return null;
-  if (localizations.isLoading) {
-    return <Skeleton className="mt-8 h-24 w-full rounded-2xl" />;
-  }
+  if (localizations.isLoading || localizations.isError) return null;
   if (!localizations.data?.length) return null;
 
   return (
