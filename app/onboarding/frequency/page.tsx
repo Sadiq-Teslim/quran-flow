@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { StepShell } from "@/components/onboarding/step-shell";
@@ -16,15 +17,19 @@ const options = [
 
 export default function FrequencyStep() {
   const router = useRouter();
-  const { frequency, set } = useOnboardingDraft();
+  const { accountCreated, frequency, hasHydrated, set } = useOnboardingDraft();
+
+  useEffect(() => {
+    if (hasHydrated && !accountCreated) router.replace("/onboarding/account");
+  }, [accountCreated, hasHydrated, router]);
 
   return (
-    <StepShell step={2} total={6}>
+    <StepShell step={3} total={7}>
       <div className="flex flex-1 flex-col">
         <div className="flex-1 space-y-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Step 2 of 6
+              Step 3 of 7
             </p>
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">
               How often do you read the Quran today?

@@ -19,12 +19,12 @@ export default function MotivationStep() {
   const { motivation, set } = useOnboardingDraft();
 
   return (
-    <StepShell step={5} total={6}>
+    <StepShell step={6} total={7}>
       <div className="flex flex-1 flex-col">
         <div className="flex-1 space-y-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Step 5 of 6
+              Step 6 of 7
             </p>
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">
               What pulls you here?

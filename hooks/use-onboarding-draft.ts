@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type OnboardingDraft = {
+  accountCreated?: boolean;
   frequency?: string;
   struggles?: string[];
   preferredTime?: string;
@@ -24,6 +25,7 @@ export const useOnboardingDraft = create<Store>()(
       set: (patch) => setState(patch),
       reset: () =>
         setState({
+          accountCreated: undefined,
           frequency: undefined,
           struggles: undefined,
           preferredTime: undefined,
@@ -34,7 +36,15 @@ export const useOnboardingDraft = create<Store>()(
     }),
     {
       name: "qf-onboarding-draft",
-      partialize: ({ frequency, struggles, preferredTime, motivation, category }) => ({
+      partialize: ({
+        accountCreated,
+        frequency,
+        struggles,
+        preferredTime,
+        motivation,
+        category,
+      }) => ({
+        accountCreated,
         frequency,
         struggles,
         preferredTime,

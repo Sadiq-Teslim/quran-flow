@@ -26,12 +26,12 @@ export default function StrugglesStep() {
   }
 
   return (
-    <StepShell step={3} total={6}>
+    <StepShell step={4} total={7}>
       <div className="flex flex-1 flex-col">
         <div className="flex-1 space-y-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Step 3 of 6
+              Step 4 of 7
             </p>
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">
               What gets in the way?

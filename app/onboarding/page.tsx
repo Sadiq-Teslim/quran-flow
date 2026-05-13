@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function OnboardingWelcome() {
   return (
-    <StepShell step={1} total={6}>
+    <StepShell step={1} total={7}>
       <div className="flex flex-1 flex-col">
         <div className="flex-1">
           <p
@@ -33,7 +33,7 @@ export default function OnboardingWelcome() {
           </p>
         </div>
         <Button asChild size="xl" className="w-full">
-          <Link href="/onboarding/frequency">
+          <Link href="/onboarding/account">
             Begin
             <ArrowRight className="size-4" aria-hidden />
           </Link>

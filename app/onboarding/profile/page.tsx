@@ -74,11 +74,13 @@ export default function ProfileStep() {
   useEffect(() => {
     if (isFinishing) return;
     if (!draft.hasHydrated) return;
-    if (!draft.frequency) router.replace("/onboarding/frequency");
+    if (!draft.accountCreated) router.replace("/onboarding/account");
+    else if (!draft.frequency) router.replace("/onboarding/frequency");
     else if (!draft.struggles?.length) router.replace("/onboarding/struggles");
     else if (!draft.preferredTime) router.replace("/onboarding/time");
     else if (!draft.motivation) router.replace("/onboarding/motivation");
   }, [
+    draft.accountCreated,
     draft.frequency,
     draft.hasHydrated,
     draft.motivation,
@@ -90,6 +92,10 @@ export default function ProfileStep() {
 
   async function handleStart() {
     if (!draft.hasHydrated) return;
+    if (!draft.accountCreated) {
+      router.replace("/onboarding/account");
+      return;
+    }
     if (!draft.frequency) {
       router.replace("/onboarding/frequency");
       return;
@@ -125,7 +131,7 @@ export default function ProfileStep() {
   }
 
   return (
-    <StepShell step={6} total={6}>
+    <StepShell step={7} total={7}>
       <div className="flex flex-1 flex-col">
         <div className="flex-1 space-y-6">
           <div>

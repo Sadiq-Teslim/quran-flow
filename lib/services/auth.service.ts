@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { apiFetch, clearAuthTokens, storeAuthTokens } from "@/lib/api/client";
+import {
+  apiFetch,
+  clearAuthTokens,
+  hasAccessToken,
+  storeAuthTokens,
+} from "@/lib/api/client";
 import { clearProfileOverride } from "@/lib/services/user.service";
 
 export const SignupPayloadSchema = z.object({
@@ -22,6 +27,13 @@ const SignupResponseSchema = z.object({
   user_id: z.string(),
   email: z.string().email(),
   message: z.string().default("User created successfully"),
+});
+
+const UpgradeAnonymousResponseSchema = z.object({
+  user_id: z.string(),
+  email: z.string().email(),
+  anonymous: z.boolean().default(false),
+  message: z.string().default("Account upgraded"),
 });
 
 const TokenResponseSchema = z.object({
@@ -56,6 +68,27 @@ export async function signup(payload: SignupPayload) {
       }),
     }),
   );
+}
+
+export async function createOnboardingAccount(payload: SignupPayload) {
+  const parsed = SignupPayloadSchema.parse(payload);
+
+  if (hasAccessToken()) {
+    await apiFetch<unknown>("/api/v1/auth/upgrade-anonymous", {
+      auth: true,
+      method: "POST",
+      body: JSON.stringify({
+        email: parsed.email,
+        password: parsed.password,
+        first_name: parsed.firstName,
+        last_name: parsed.lastName,
+      }),
+    }).then((response) => UpgradeAnonymousResponseSchema.parse(response));
+  } else {
+    await signup(parsed);
+  }
+
+  return login({ email: parsed.email, password: parsed.password });
 }
 
 export async function login(payload: LoginPayload) {
