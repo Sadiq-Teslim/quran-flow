@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 import { useCompleteOnboarding } from "@/hooks/use-complete-onboarding";
+import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
 import { determineProfileFromAnswers } from "@/lib/profile/determine-profile";
 import {
   determineProfile,
@@ -19,6 +20,7 @@ export default function ProfileStep() {
   const router = useRouter();
   const draft = useOnboardingDraft();
   const mutation = useCompleteOnboarding();
+  const gate = useOnboardingAccountGate();
   const [isFinishing, setIsFinishing] = useState(false);
 
   const answers = useMemo(() => {
@@ -74,25 +76,25 @@ export default function ProfileStep() {
   useEffect(() => {
     if (isFinishing) return;
     if (!draft.hasHydrated) return;
-    if (!draft.accountCreated) router.replace("/onboarding/account");
-    else if (!draft.frequency) router.replace("/onboarding/frequency");
+    if (!gate.canContinue) return;
+    if (!draft.frequency) router.replace("/onboarding/frequency");
     else if (!draft.struggles?.length) router.replace("/onboarding/struggles");
     else if (!draft.preferredTime) router.replace("/onboarding/time");
     else if (!draft.motivation) router.replace("/onboarding/motivation");
   }, [
-    draft.accountCreated,
     draft.frequency,
     draft.hasHydrated,
     draft.motivation,
     draft.preferredTime,
     draft.struggles?.length,
+    gate.canContinue,
     isFinishing,
     router,
   ]);
 
   async function handleStart() {
     if (!draft.hasHydrated) return;
-    if (!draft.accountCreated) {
+    if (!gate.canContinue) {
       router.replace("/onboarding/account");
       return;
     }
@@ -180,7 +182,7 @@ export default function ProfileStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={mutation.isPending || isFinishing}
+          disabled={mutation.isPending || isFinishing || !gate.canContinue}
           onClick={handleStart}
         >
           {mutation.isPending || isFinishing ? "Setting up..." : "Begin my journey"}

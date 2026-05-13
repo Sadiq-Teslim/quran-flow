@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { StepShell } from "@/components/onboarding/step-shell";
 import { OptionRow } from "@/components/onboarding/option-row";
 import { Button } from "@/components/ui/button";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
+import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
 
 const options = [
   { value: "daily", label: "Daily", description: "I read at least a little every day." },
@@ -17,11 +17,8 @@ const options = [
 
 export default function FrequencyStep() {
   const router = useRouter();
-  const { accountCreated, frequency, hasHydrated, set } = useOnboardingDraft();
-
-  useEffect(() => {
-    if (hasHydrated && !accountCreated) router.replace("/onboarding/account");
-  }, [accountCreated, hasHydrated, router]);
+  const { frequency, set } = useOnboardingDraft();
+  const gate = useOnboardingAccountGate();
 
   return (
     <StepShell step={3} total={7}>
@@ -53,7 +50,7 @@ export default function FrequencyStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={!frequency}
+          disabled={!frequency || !gate.canContinue}
           onClick={() => router.push("/onboarding/struggles")}
         >
           Continue

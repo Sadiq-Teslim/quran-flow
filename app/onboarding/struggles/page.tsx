@@ -6,6 +6,7 @@ import { StepShell } from "@/components/onboarding/step-shell";
 import { OptionRow } from "@/components/onboarding/option-row";
 import { Button } from "@/components/ui/button";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
+import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
 
 const options = [
   { value: "time", label: "Finding time", description: "Days move fast, hours disappear." },
@@ -17,6 +18,7 @@ const options = [
 export default function StrugglesStep() {
   const router = useRouter();
   const { struggles = [], set } = useOnboardingDraft();
+  const gate = useOnboardingAccountGate();
 
   function toggle(v: string) {
     const next = struggles.includes(v)
@@ -55,7 +57,7 @@ export default function StrugglesStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={struggles.length === 0}
+          disabled={struggles.length === 0 || !gate.canContinue}
           onClick={() => router.push("/onboarding/time")}
         >
           Continue

@@ -6,6 +6,7 @@ import { StepShell } from "@/components/onboarding/step-shell";
 import { OptionRow } from "@/components/onboarding/option-row";
 import { Button } from "@/components/ui/button";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
+import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
 
 const options = [
   { value: "closeness", label: "Nearness to Allah", description: "I want to feel closer in my daily life." },
@@ -17,6 +18,7 @@ const options = [
 export default function MotivationStep() {
   const router = useRouter();
   const { motivation, set } = useOnboardingDraft();
+  const gate = useOnboardingAccountGate();
 
   return (
     <StepShell step={6} total={7}>
@@ -48,7 +50,7 @@ export default function MotivationStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={!motivation}
+          disabled={!motivation || !gate.canContinue}
           onClick={() => router.push("/onboarding/profile")}
         >
           Continue

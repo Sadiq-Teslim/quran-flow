@@ -6,6 +6,7 @@ import { StepShell } from "@/components/onboarding/step-shell";
 import { OptionRow } from "@/components/onboarding/option-row";
 import { Button } from "@/components/ui/button";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
+import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
 
 const options = [
   { value: "fajr", label: "After Fajr", description: "Quiet morning, before the day asks for you." },
@@ -18,6 +19,7 @@ const options = [
 export default function TimeStep() {
   const router = useRouter();
   const { preferredTime, set } = useOnboardingDraft();
+  const gate = useOnboardingAccountGate();
 
   return (
     <StepShell step={5} total={7}>
@@ -49,7 +51,7 @@ export default function TimeStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={!preferredTime}
+          disabled={!preferredTime || !gate.canContinue}
           onClick={() => router.push("/onboarding/motivation")}
         >
           Continue

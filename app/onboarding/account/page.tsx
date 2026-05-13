@@ -19,7 +19,7 @@ import {
 export default function AccountStep() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const draft = useOnboardingDraft();
+  const setDraft = useOnboardingDraft((state) => state.set);
   const user = useUser();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -29,7 +29,7 @@ export default function AccountStep() {
   const createAccount = useMutation({
     mutationFn: (payload: SignupPayload) => createOnboardingAccount(payload),
     onSuccess: async () => {
-      draft.set({ accountCreated: true });
+      setDraft({ accountCreated: true });
       await queryClient.invalidateQueries({ queryKey: ["user"] });
       router.push("/onboarding/frequency");
     },
@@ -37,10 +37,10 @@ export default function AccountStep() {
 
   useEffect(() => {
     if (user.data && !user.data.isAnonymous) {
-      draft.set({ accountCreated: true });
+      setDraft({ accountCreated: true });
       router.replace("/onboarding/frequency");
     }
-  }, [draft, router, user.data]);
+  }, [router, setDraft, user.data]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
