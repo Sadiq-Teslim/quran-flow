@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerseBlock } from "@/components/reading/verse-block";
 import { InsightCard } from "@/components/reading/insight-card";
+import { AudioControls } from "@/components/reading/audio-controls";
 
 export default function VersePage({
   params,
@@ -23,6 +24,7 @@ export default function VersePage({
   const verse = useVerse(surah, ayah);
   const next = useNextVerse(surah, ayah);
   const prev = usePrevVerse(surah, ayah);
+  const localizations = useVerseLocalizations(verse.data?.id);
 
   return (
     <div className="mx-auto max-w-2xl px-5 pb-24 pt-6 sm:px-8">
@@ -50,6 +52,11 @@ export default function VersePage({
       ) : verse.data ? (
         <>
           <VerseBlock verse={verse.data} />
+          <AudioControls
+            verse={verse.data}
+            localizations={localizations.data}
+            className="mt-8"
+          />
           <div className="mt-10 space-y-4">
             {verse.data.lesson ? (
               <InsightCard tone="lesson">{verse.data.lesson}</InsightCard>
@@ -63,7 +70,7 @@ export default function VersePage({
               </InsightCard>
             ) : null}
           </div>
-          <VerseLocalizations verseId={verse.data.id} />
+          <VerseLocalizations localizations={localizations} verseId={verse.data.id} />
           <div className="mt-10 flex items-center justify-between gap-3">
             <Button
               asChild
@@ -119,9 +126,13 @@ export default function VersePage({
   );
 }
 
-function VerseLocalizations({ verseId }: { verseId?: number }) {
-  const localizations = useVerseLocalizations(verseId);
-
+function VerseLocalizations({
+  verseId,
+  localizations,
+}: {
+  verseId?: number;
+  localizations: ReturnType<typeof useVerseLocalizations>;
+}) {
   if (!verseId) return null;
   if (localizations.isLoading || localizations.isError) return null;
   if (!localizations.data?.length) return null;

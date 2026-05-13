@@ -32,12 +32,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { IdentityBadge } from "@/components/identity-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useUser } from "@/hooks/use-user";
+import {
+  audioLanguageLabels,
+  type AudioLanguage,
+  useAudioLanguage,
+} from "@/lib/audio/preferences";
 import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const user = useUser();
   const auth = useAuth();
   const { theme, setTheme } = useTheme();
+  const audioLanguage = useAudioLanguage();
   const isDark = theme === "dark";
 
   return (
@@ -160,11 +166,28 @@ export default function ProfilePage() {
                 </p>
               </div>
             </button>
-            <Row
-              icon={Languages}
-              title="Language"
-              detail="English · soon: Yoruba, Igbo, Hausa"
-            />
+            <div className="flex items-center gap-4 p-5">
+              <Languages className="size-5 text-muted-foreground" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium leading-tight">Audio language</p>
+                <p className="text-sm text-muted-foreground">
+                  Used for translations and explanations
+                </p>
+              </div>
+              <select
+                value={audioLanguage.language}
+                onChange={(event) =>
+                  audioLanguage.setLanguage(event.target.value as AudioLanguage)
+                }
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {Object.entries(audioLanguageLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Row
               icon={Activity}
               title="Reading anchor"
