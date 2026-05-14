@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Source_Serif_4, Amiri_Quran } from "next/font/google";
+import { Amiri_Quran, Quicksand } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const inter = Inter({
+const quicksand = Quicksand({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const sourceSerif = Source_Serif_4({
-  subsets: ["latin"],
-  variable: "--font-source-serif",
+  variable: "--font-quicksand",
   display: "swap",
 });
 
@@ -23,15 +17,21 @@ const amiriQuran = Amiri_Quran({
 });
 
 export const metadata: Metadata = {
-  title: "QuranFlow — Beyond Ramadan",
+  title: "QuranFlow - Beyond Ramadan",
   description:
     "A behavioral and educational system for lifelong Quran engagement.",
+  icons: {
+    icon: "/quranflow-icon.png",
+    shortcut: "/quranflow-icon.png",
+    apple: "/quranflow-icon.png",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF7F2" },
-    { media: "(prefers-color-scheme: dark)", color: "#10171A" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${sourceSerif.variable} ${amiriQuran.variable}`}
+      className={`${quicksand.variable} ${amiriQuran.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-svh antialiased">

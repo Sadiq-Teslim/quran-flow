@@ -113,7 +113,7 @@ export default function PlanPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Fallback check-in</h2>
           {checkin.isLoading ? (
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           ) : (
             <Card className="p-5 font-serif text-base italic leading-relaxed">
               {checkin.data}
@@ -124,14 +124,14 @@ export default function PlanPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Recommended learning</h2>
           {recommendations.isLoading ? (
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           ) : recommendations.data?.length ? (
             <div className="space-y-3">
               {recommendations.data.map((item) => (
                 <Link
                   key={item.id}
                   href={`/learn/${item.id}`}
-                  className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="p-5 transition-colors hover:bg-secondary/40">
                     <p className="text-xs font-medium uppercase tracking-wider text-accent">

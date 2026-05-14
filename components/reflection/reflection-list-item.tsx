@@ -4,14 +4,14 @@ import type { Reflection } from "@/lib/services/reflection.service";
 
 function preview(text: string, max = 120) {
   const trimmed = text.trim();
-  return trimmed.length > max ? trimmed.slice(0, max).trimEnd() + "…" : trimmed;
+  return trimmed.length > max ? trimmed.slice(0, max).trimEnd() + "..." : trimmed;
 }
 
 export function ReflectionListItem({ reflection }: { reflection: Reflection }) {
   return (
     <Link
       href={`/reflect/${reflection.id}`}
-      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-2xl"
+      className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <Card className="p-5 transition-colors hover:border-border hover:bg-secondary/30">
         <p className="font-serif text-lg leading-tight">{reflection.title}</p>

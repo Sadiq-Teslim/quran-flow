@@ -178,8 +178,9 @@ function mapApiChapter(chapter: ApiChapter): Chapter {
 
 export async function listChapters(): Promise<Chapter[]> {
   const responses = await Promise.all([
-    apiFetch<unknown>("/api/v1/quran/chapters?page=1&per_page=100"),
-    apiFetch<unknown>("/api/v1/quran/chapters?page=2&per_page=100"),
+    apiFetch<unknown>("/api/v1/quran/chapters?page=1&per_page=50"),
+    apiFetch<unknown>("/api/v1/quran/chapters?page=2&per_page=50"),
+    apiFetch<unknown>("/api/v1/quran/chapters?page=3&per_page=50"),
   ]);
   const chapters = responses.flatMap(
     (response) => ApiChapterListSchema.parse(response).items,

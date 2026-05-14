@@ -47,7 +47,7 @@ export default function ReflectPage() {
         {isLoading || !data || !groups ? (
           <div className="space-y-3">
             {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+              <Skeleton key={i} className="h-28 w-full rounded-lg" />
             ))}
           </div>
         ) : data.length === 0 ? (

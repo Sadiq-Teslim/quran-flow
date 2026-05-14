@@ -1,6 +1,9 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_QURANFLOW_API_BASE_URL?.replace(/\/$/, "") ??
   "/api/quranflow";
+const API_TIMEOUT_MS = Number(
+  process.env.NEXT_PUBLIC_QURANFLOW_API_TIMEOUT_MS ?? 10000,
+);
 
 const ACCESS_TOKEN_KEY = "quranflow.access_token";
 const REFRESH_TOKEN_KEY = "quranflow.refresh_token";
@@ -93,6 +96,8 @@ export async function apiFetch<T>(
     ...init
   }: ApiFetchOptions = {},
 ): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   const requestHeaders = new Headers(headers);
   if (!requestHeaders.has("Accept")) {
     requestHeaders.set("Accept", "application/json");
@@ -106,10 +111,16 @@ export async function apiFetch<T>(
     requestHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: requestHeaders,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: requestHeaders,
+      signal: init.signal ?? controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 204) {
     return undefined as T;
@@ -171,7 +182,11 @@ async function refreshAccessToken() {
 }
 
 export function shouldUseMockFallback(error: unknown) {
+  const isNetworkError =
+    error instanceof TypeError ||
+    (error instanceof Error && error.name === "AbortError");
   return (
+    isNetworkError ||
     !hasAccessToken() ||
     (error instanceof ApiError && (error.status === 401 || error.status === 403))
   );

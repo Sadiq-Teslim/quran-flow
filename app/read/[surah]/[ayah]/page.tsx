@@ -37,7 +37,7 @@ export default function VersePage({
         </Button>
         {verse.data ? (
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
-            {verse.data.surahName} · {verse.data.surah}:{verse.data.ayah}
+            {verse.data.surahName} - {verse.data.surah}:{verse.data.ayah}
           </span>
         ) : null}
       </header>
@@ -111,7 +111,7 @@ export default function VersePage({
           </div>
         </>
       ) : (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-card/50 p-8 text-center">
+        <div className="rounded-lg border border-dashed border-border/60 bg-card/50 p-8 text-center">
           <p className="font-serif text-lg">This verse didn&apos;t load.</p>
           <Button
             variant="ghost"
@@ -143,7 +143,7 @@ function VerseLocalizations({
       {localizations.data.map((item) => (
         <Card key={item.id} className="p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-accent">
-            {item.language} · {item.kind} · {item.reviewStatus}
+            {item.language} - {item.kind} - {item.reviewStatus}
           </p>
           <p className="mt-2 font-serif text-base leading-relaxed">{item.content}</p>
         </Card>

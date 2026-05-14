@@ -86,7 +86,7 @@ export default function NotificationsPage() {
         {notifications.isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-2xl" />
+              <Skeleton key={index} className="h-24 w-full rounded-lg" />
             ))}
           </div>
         ) : !auth.isAuthenticated ? (

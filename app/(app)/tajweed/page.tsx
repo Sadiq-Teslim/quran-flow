@@ -52,13 +52,13 @@ export default function TajweedPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Lessons</h2>
           {lessons.isLoading ? (
-            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-lg" />
           ) : lessons.data?.length ? (
             <div className="space-y-3">
               {lessons.data.map((lesson) => (
                 <Card key={lesson.id} className="p-5">
                   <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                    {lesson.difficulty} · {lesson.exampleVerseRef}
+                    {lesson.difficulty} - {lesson.exampleVerseRef}
                   </p>
                   <p className="mt-1 font-serif text-xl leading-tight">{lesson.title}</p>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -104,7 +104,7 @@ export default function TajweedPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">My feedback</h2>
           {feedback.isLoading ? (
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           ) : feedback.data?.length ? (
             <div className="space-y-3">
               {feedback.data.map((item) => (

@@ -49,7 +49,7 @@ export function LessonCard({
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium leading-tight">{title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {completed ? "Completed" : `${minutes} min${upNext ? " · Up next" : ""}`}
+          {completed ? "Completed" : `${minutes} min${upNext ? " - Up next" : ""}`}
         </p>
       </div>
     </Card>
@@ -59,7 +59,7 @@ export function LessonCard({
   return (
     <Link
       href={`/learn/${id}`}
-      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-2xl"
+      className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
     >
       {inner}
     </Link>

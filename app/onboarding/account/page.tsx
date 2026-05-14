@@ -91,8 +91,7 @@ export default function AccountStep() {
             <div className="mb-4 flex items-start gap-3">
               <LockKeyhole className="mt-0.5 size-5 text-accent" aria-hidden />
               <p className="text-sm leading-relaxed text-muted-foreground">
-                We&apos;ll save your journey before personalizing it. No throwaway
-                guest dashboard.
+                We&apos;ll save your journey before personalizing your daily plan.
               </p>
             </div>
             <form className="space-y-3" onSubmit={handleSubmit}>

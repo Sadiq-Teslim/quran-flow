@@ -28,10 +28,16 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-full flex-col items-center justify-center gap-1 rounded-md text-[11px] font-medium transition-colors",
+                  "relative flex h-full flex-col items-center justify-center gap-1 rounded-md text-[11px] font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
+                {active ? (
+                  <span
+                    className="absolute top-0 h-1 w-10 rounded-b-full bg-primary"
+                    aria-hidden
+                  />
+                ) : null}
                 <Icon className="size-5" aria-hidden />
                 {label}
               </Link>

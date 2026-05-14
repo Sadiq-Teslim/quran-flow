@@ -24,7 +24,7 @@ export default function NewMuslimPage() {
             description="Your guided foundation path will be shaped around your profile."
           />
         ) : guided.isLoading ? (
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-lg" />
         ) : guided.data ? (
           <>
             <Card className="bg-gradient-to-b from-accent/[0.08] to-transparent p-6">
@@ -39,7 +39,7 @@ export default function NewMuslimPage() {
                 <Link
                   key={verse.id}
                   href={`/read/${verse.chapterId}/${verse.verseNumber}`}
-                  className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="p-5 transition-colors hover:bg-secondary/40">
                     <p className="text-xs font-medium uppercase tracking-wider text-accent">
@@ -59,7 +59,7 @@ export default function NewMuslimPage() {
                 <Link
                   key={module.id}
                   href={`/learn/${module.id}`}
-                  className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="p-5 transition-colors hover:bg-secondary/40">
                     <p className="text-xs font-medium uppercase tracking-wider text-accent">

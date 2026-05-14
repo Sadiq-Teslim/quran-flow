@@ -66,7 +66,7 @@ export default function FamilyPage() {
             description="Create or join a family group to build a shared habit."
           />
         ) : families.isLoading ? (
-          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-lg" />
         ) : activeFamily ? (
           <>
             <Card className="p-5">
@@ -118,7 +118,7 @@ export default function FamilyPage() {
             <section className="space-y-3">
               <h2 className="font-serif text-xl leading-tight">Members</h2>
               {members.isLoading ? (
-                <Skeleton className="h-24 w-full rounded-2xl" />
+                <Skeleton className="h-24 w-full rounded-lg" />
               ) : members.data?.length ? (
                 <div className="space-y-2">
                   {members.data.map((member) => (

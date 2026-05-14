@@ -1,0 +1,16 @@
+{
+  "name": "QuranFlow",
+  "short_name": "QuranFlow",
+  "description": "A behavioral and educational system for lifelong Quran engagement.",
+  "icons": [
+    {
+      "src": "/quranflow-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}

@@ -10,7 +10,7 @@ export function IdentityBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent",
+        "inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent",
         className,
       )}
     >

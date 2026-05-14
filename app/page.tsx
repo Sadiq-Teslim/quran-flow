@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { QuranFlowMark } from "@/components/brand/quranflow-mark";
 import { useUser } from "@/hooks/use-user";
 
 export default function Index() {
@@ -16,9 +17,7 @@ export default function Index() {
 
   return (
     <div className="flex min-h-svh items-center justify-center">
-      <span className="font-serif text-sm text-muted-foreground">
-        QuranFlow
-      </span>
+      <QuranFlowMark showWordmark className="text-primary" />
     </div>
   );
 }

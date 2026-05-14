@@ -44,7 +44,7 @@ export default function ProgressPage() {
             <h2 className="font-serif text-xl leading-tight">Streak</h2>
             {streak.data ? (
               <p className="text-sm text-muted-foreground">
-                {streak.data.current} days · longest {streak.data.longest}
+                {streak.data.current} days - longest {streak.data.longest}
               </p>
             ) : null}
           </div>
@@ -63,21 +63,21 @@ export default function ProgressPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">This month</h2>
           {summary.isLoading || !summary.data ? (
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           ) : (
             <Card className="space-y-3 p-5 font-serif text-base leading-relaxed">
               <p>
-                <span className="text-muted-foreground">Verses read · </span>
+                <span className="text-muted-foreground">Verses read - </span>
                 <span className="font-semibold">{summary.data.versesThisMonth}</span>
               </p>
               <p>
-                <span className="text-muted-foreground">Reflections · </span>
+                <span className="text-muted-foreground">Reflections - </span>
                 <span className="font-semibold">
                   {summary.data.reflectionsThisMonth}
                 </span>
               </p>
               <p>
-                <span className="text-muted-foreground">Lessons completed · </span>
+                <span className="text-muted-foreground">Lessons completed - </span>
                 <span className="font-semibold">
                   {summary.data.lessonsCompletedThisMonth}
                 </span>
@@ -89,7 +89,7 @@ export default function ProgressPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Consistency analytics</h2>
           {analytics.isLoading || !analytics.data ? (
-            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-28 w-full rounded-lg" />
           ) : (
             <Card className="space-y-4 p-5">
               <div>
@@ -120,7 +120,7 @@ export default function ProgressPage() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Insights</h2>
           {insights.isLoading || !insights.data ? (
-            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-lg" />
           ) : (
             <div className="space-y-3">
               {insights.data.map((i) => (

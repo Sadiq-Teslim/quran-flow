@@ -60,7 +60,7 @@ export default function AccountabilityPage() {
       <ScreenHeader title="Accountability" subtitle="Partner and AI check-ins" />
       <div className="space-y-6 px-5 sm:px-6">
         {partners.isLoading ? (
-          <Skeleton className="h-32 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-lg" />
         ) : !auth.isAuthenticated ? (
           <EmptyState
             icon={Handshake}
@@ -127,7 +127,7 @@ export default function AccountabilityPage() {
               </Button>
             </Card>
             {checkins.isLoading ? (
-              <Skeleton className="h-24 w-full rounded-2xl" />
+              <Skeleton className="h-24 w-full rounded-lg" />
             ) : checkins.data?.length ? (
               <div className="space-y-3">
                 {checkins.data.map((checkin) => (

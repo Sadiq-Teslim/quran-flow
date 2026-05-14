@@ -70,7 +70,7 @@ export default function HomePage() {
             </p>
             {streak.data ? (
               <p className="mt-2 text-xs uppercase tracking-wider text-muted-foreground">
-                Longest · {streak.data.longest}
+                Longest - {streak.data.longest}
               </p>
             ) : null}
           </div>
@@ -80,7 +80,7 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="font-serif text-xl leading-tight">Today&apos;s reading</h2>
         {plan.isLoading ? (
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-lg" />
         ) : plan.data ? (
           <DayPlanCard plan={plan.data} />
         ) : (
@@ -93,11 +93,11 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="font-serif text-xl leading-tight">Continue learning</h2>
         {learn.isLoading ? (
-          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-20 w-full rounded-lg" />
         ) : nextLesson ? (
           <Link
             href={`/learn/${nextLesson.id}`}
-            className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Card className="flex items-center gap-3 p-5 transition-colors hover:border-border hover:bg-secondary/30">
               <div className="min-w-0 flex-1">

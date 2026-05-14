@@ -19,7 +19,7 @@ export function OptionRow({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "flex w-full items-center gap-4 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         selected
           ? "border-primary bg-primary/[0.06]"
           : "border-border/60 bg-card hover:bg-secondary/40",

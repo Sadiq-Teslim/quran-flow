@@ -23,7 +23,7 @@ export default function ReadIndex() {
       <ScreenHeader title="Read" subtitle="Today's path through the Mushaf" />
       <div className="space-y-6 px-5 sm:px-6">
         {isLoading ? (
-          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-lg" />
         ) : data ? (
           <DayPlanCard plan={data} />
         ) : (
@@ -48,18 +48,18 @@ export default function ReadIndex() {
           </div>
           {query.trim().length >= 2 ? (
             search.isLoading ? (
-              <Skeleton className="h-28 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-lg" />
             ) : search.data?.length ? (
               <div className="space-y-3">
                 {search.data.map((verse) => (
                   <Link
                     key={`${verse.surah}:${verse.ayah}`}
                     href={`/read/${verse.surah}/${verse.ayah}`}
-                    className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Card className="p-5 transition-colors hover:bg-secondary/40">
                       <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                        {verse.surahName} · {verse.surah}:{verse.ayah}
+                        {verse.surahName} - {verse.surah}:{verse.ayah}
                       </p>
                       <p className="mt-2 line-clamp-2 font-serif text-sm leading-relaxed">
                         {verse.translation}
@@ -81,7 +81,7 @@ export default function ReadIndex() {
           {chapters.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-16 w-full rounded-2xl" />
+                <Skeleton key={index} className="h-16 w-full rounded-lg" />
               ))}
             </div>
           ) : (
@@ -90,7 +90,7 @@ export default function ReadIndex() {
                 <Link
                   key={chapter.id}
                   href={`/read/${chapter.number}/1`}
-                  className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="flex items-center gap-4 p-4 transition-colors hover:bg-secondary/40">
                     <span className="flex size-9 items-center justify-center rounded-full bg-secondary text-sm font-medium">
@@ -99,7 +99,7 @@ export default function ReadIndex() {
                     <div className="min-w-0 flex-1">
                       <p className="font-serif leading-tight">{chapter.nameEnglish}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {chapter.meaning ?? chapter.revelationType} · {chapter.verseCount} verses
+                        {chapter.meaning ?? chapter.revelationType} - {chapter.verseCount} verses
                       </p>
                     </div>
                     <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
@@ -113,21 +113,21 @@ export default function ReadIndex() {
         <section className="space-y-3">
           <h2 className="font-serif text-xl leading-tight">Reading history</h2>
           {history.isLoading ? (
-            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-lg" />
           ) : history.data?.items.length ? (
             <div className="space-y-2">
               {history.data.items.slice(0, 5).map((item) => (
                 <Link
                   key={item.id}
                   href={`/read/${item.chapterId}/${item.startVerse}`}
-                  className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Card className="p-4 transition-colors hover:bg-secondary/40">
                     <p className="font-medium leading-tight">
                       Surah {item.chapterId}:{item.startVerse}-{item.endVerse}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {item.versesCompleted} verses · {new Date(item.createdAt).toLocaleDateString()}
+                      {item.versesCompleted} verses - {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   </Card>
                 </Link>

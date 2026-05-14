@@ -36,7 +36,7 @@ export function ScreenHeader({
           </button>
         ) : null}
         <div>
-          <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight">
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight">
             {title}
           </h1>
           {subtitle ? (

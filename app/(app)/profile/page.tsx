@@ -56,7 +56,7 @@ export default function ProfilePage() {
               className="flex size-14 items-center justify-center rounded-full bg-primary/10 font-serif text-2xl text-primary"
               aria-hidden
             >
-              {user.data?.name?.[0] ?? "·"}
+              {user.data?.name?.[0] ?? "Q"}
             </div>
             <div className="min-w-0 flex-1">
               {user.isLoading || !user.data ? (
@@ -102,7 +102,7 @@ export default function ProfilePage() {
 
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Connected systems
+            Journey tools
           </h2>
           <Card className="divide-y divide-border/60">
             <Row
@@ -162,7 +162,7 @@ export default function ProfilePage() {
               <div className="flex-1">
                 <p className="font-medium leading-tight">Reading mode</p>
                 <p className="text-sm text-muted-foreground">
-                  {isDark ? "Night" : "Day"} · tap to switch
+                  {isDark ? "Night" : "Day"} - tap to switch
                 </p>
               </div>
             </button>
@@ -196,7 +196,7 @@ export default function ProfilePage() {
             <Row
               icon={Globe}
               title="Tafsir source"
-              detail="Scholar-verified · Tafsir Ibn Kathir"
+              detail="Scholar-verified - Tafsir Ibn Kathir"
             />
           </Card>
         </section>
@@ -206,13 +206,13 @@ export default function ProfilePage() {
             About
           </h2>
           <Card className="p-5 font-serif text-sm leading-relaxed text-muted-foreground">
-            QuranFlow is built so the Quran becomes a daily presence — not a
+            QuranFlow is built so the Quran becomes a daily presence, not a
             seasonal one. Read small. Read often. Return without guilt.
           </Card>
         </section>
 
         <p className="text-center text-xs text-muted-foreground">
-          QuranFlow · Beyond Ramadan
+          QuranFlow - Beyond Ramadan
         </p>
       </div>
     </div>

@@ -20,7 +20,7 @@ export default function LearnPage() {
             {stages.data.map((stage) => (
               <div
                 key={stage.key}
-                className="rounded-2xl border border-border/60 bg-card p-4"
+                className="rounded-lg border border-border/60 bg-card p-4"
               >
                 <p className="text-xs font-medium uppercase tracking-wider text-accent">
                   {stage.completedCount}/{stage.moduleCount}
@@ -33,7 +33,7 @@ export default function LearnPage() {
         {isLoading || !data ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
             ))}
           </div>
         ) : (
@@ -44,7 +44,7 @@ export default function LearnPage() {
                 <div className="flex items-end justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-accent">
-                      Stage {stage.stage} · {stage.stageName}
+                      Stage {stage.stage} - {stage.stageName}
                     </p>
                     <p className="mt-0.5 text-sm text-muted-foreground">
                       {stage.locked
