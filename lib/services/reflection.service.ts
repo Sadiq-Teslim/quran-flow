@@ -27,39 +27,38 @@ export type CreateReflectionPayload = z.infer<typeof CreateReflectionSchema>;
 
 const ApiReflectionSchema = z.object({
   id: z.string(),
-  verse_id: z.number(),
-  content: z.string(),
-  created_at: z.string(),
+  verse_id: z.number().optional(),
+  verse_key: z.string().nullable().optional(),
+  content: z.string().optional(),
+  text: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 const ApiReflectionListSchema = z.object({
-  items: z.array(ApiReflectionSchema),
-});
-
-const ApiVerseIdSchema = z.object({
-  id: z.number(),
+  items: z.array(ApiReflectionSchema).optional(),
+  reflections: z.array(ApiReflectionSchema).optional(),
 });
 
 function mapApiReflection(reflection: z.infer<typeof ApiReflectionSchema>): Reflection {
-  const [first, ...rest] = reflection.content.split(/\n\n+/);
+  const content = reflection.text ?? reflection.content ?? "";
+  const [first, ...rest] = content.split(/\n\n+/);
   const title = rest.length > 0 ? first : "Reflection";
-  const body = rest.length > 0 ? rest.join("\n\n") : reflection.content;
+  const body = rest.length > 0 ? rest.join("\n\n") : content;
+  const verseKey = reflection.verse_key ?? null;
+  const verseRef = verseKey
+    ? {
+        surah: Number.parseInt(verseKey.split(":")[0], 10),
+        ayah: Number.parseInt(verseKey.split(":")[1], 10),
+      }
+    : null;
   return ReflectionSchema.parse({
     id: reflection.id,
-    createdAt: reflection.created_at,
-    verseRef: null,
+    createdAt: reflection.created_at ?? reflection.updated_at ?? new Date().toISOString(),
+    verseRef,
     title,
     body,
   });
-}
-
-async function getVerseId(verseRef: NonNullable<CreateReflectionPayload["verseRef"]>) {
-  const verse = ApiVerseIdSchema.parse(
-    await apiFetch<unknown>(
-      `/api/v1/quran/chapters/${verseRef.surah}/verses/${verseRef.ayah}`,
-    ),
-  );
-  return verse.id;
 }
 
 export async function listReflections(): Promise<Reflection[]> {
@@ -68,7 +67,7 @@ export async function listReflections(): Promise<Reflection[]> {
       const response = ApiReflectionListSchema.parse(
         await apiFetch<unknown>("/api/v1/reflections", { auth: true }),
       );
-      return response.items
+      return (response.items ?? response.reflections ?? [])
         .map(mapApiReflection)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
@@ -103,18 +102,19 @@ export async function getReflection(id: string): Promise<Reflection> {
 export async function createReflection(payload: CreateReflectionPayload): Promise<Reflection> {
   CreateReflectionSchema.parse(payload);
 
-  if (hasAccessToken() && payload.verseRef) {
+  if (hasAccessToken()) {
     try {
-      const verseId = await getVerseId(payload.verseRef);
       const reflection = ApiReflectionSchema.parse(
         await apiFetch<unknown>("/api/v1/reflections", {
           auth: true,
           method: "POST",
           body: JSON.stringify({
-            verse_id: verseId,
-            reflection_type: "personal",
-            content: `${payload.title}\n\n${payload.body}`,
-            is_shared: false,
+            verse_key: payload.verseRef
+              ? `${payload.verseRef.surah}:${payload.verseRef.ayah}`
+              : null,
+            text: `${payload.title}\n\n${payload.body}`,
+            tags: [],
+            visibility: "private",
           }),
         }),
       );

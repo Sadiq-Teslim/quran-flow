@@ -23,50 +23,31 @@ export const GuidedContentSchema = z.object({
 });
 export type GuidedContent = z.infer<typeof GuidedContentSchema>;
 
-const ApiGuidedContentSchema = z.object({
-  welcome_message: z.string(),
-  foundation_modules: z.array(
-    z.object({
-      id: z.string(),
-      title: z.string(),
-      description: z.string().nullable().optional(),
-      stage: z.string(),
-    }),
-  ),
-  starter_verses: z.array(
-    z.object({
-      id: z.number(),
-      chapter_id: z.number(),
-      verse_number: z.number(),
-      text_en: z.string(),
-    }),
-  ),
-  next_steps: z.array(z.string()),
-});
-
 export async function getGuidedContent(): Promise<GuidedContent | null> {
   if (!hasAccessToken()) return null;
   try {
-    const response = ApiGuidedContentSchema.parse(
-      await apiFetch<unknown>("/api/v1/new-muslim/guided-content", {
-        auth: true,
-      }),
+    const response = z.object({
+      lessons: z.array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          description: z.string().nullable().optional(),
+          stage: z.union([z.string(), z.number()]).optional(),
+        }),
+      ).optional(),
+    }).parse(
+      await apiFetch<unknown>("/api/v1/education/feed", { auth: true }),
     );
     return GuidedContentSchema.parse({
-      welcomeMessage: response.welcome_message,
-      modules: response.foundation_modules.map((module) => ({
+      welcomeMessage: "Start gently. QuranFlow will guide your first steps.",
+      modules: (response.lessons ?? []).slice(0, 3).map((module) => ({
         id: module.id,
         title: module.title,
         description: module.description ?? null,
-        stage: module.stage,
+        stage: String(module.stage ?? "foundation"),
       })),
-      starterVerses: response.starter_verses.map((verse) => ({
-        id: verse.id,
-        chapterId: verse.chapter_id,
-        verseNumber: verse.verse_number,
-        textEnglish: verse.text_en,
-      })),
-      nextSteps: response.next_steps,
+      starterVerses: [],
+      nextSteps: ["Read three verses.", "Save one reflection.", "Return tomorrow."],
     });
   } catch (error) {
     if (!shouldUseMockFallback(error)) throw error;

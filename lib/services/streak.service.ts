@@ -29,34 +29,30 @@ export const StreakHistorySchema = z.array(
 export type StreakHistory = z.infer<typeof StreakHistorySchema>;
 
 const ApiStreakSchema = z.object({
-  current_streak: z.number(),
-  longest_streak: z.number(),
-  total_days_engaged: z.number(),
+  current_streak: z.number().optional(),
+  current: z.number().optional(),
+  longest_streak: z.number().optional(),
+  longest: z.number().optional(),
+  last_read_date: z.string().optional(),
+  no_zero_day_mode: z.boolean().optional(),
 });
 
 const ApiHabitHistorySchema = z.object({
-  items: z.array(
-    z.object({
-      tracking_date: z.string(),
-      actual_reading_verses: z.number(),
-      reflection_completed: z.boolean(),
-      educational_content_engaged: z.boolean(),
-      minimum_session_completed: z.boolean(),
-    }),
-  ),
+  items: z.array(z.record(z.string(), z.unknown())).optional(),
+  days: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 export async function getStreak(): Promise<Streak> {
   if (hasAccessToken()) {
     try {
       const streak = ApiStreakSchema.parse(
-        await apiFetch<unknown>("/api/v1/habits/streak", { auth: true }),
+        await apiFetch<unknown>("/api/v1/progress/streaks", { auth: true }),
       );
       return StreakSchema.parse({
-        current: streak.current_streak,
-        longest: streak.longest_streak,
-        lastReadDate: new Date().toISOString().slice(0, 10),
-        noZeroDayMode: true,
+        current: streak.current_streak ?? streak.current ?? 0,
+        longest: streak.longest_streak ?? streak.longest ?? 0,
+        lastReadDate: streak.last_read_date ?? new Date().toISOString().slice(0, 10),
+        noZeroDayMode: streak.no_zero_day_mode ?? true,
       });
     } catch (error) {
       if (!shouldUseMockFallback(error)) throw error;
@@ -95,16 +91,19 @@ export async function getStreakHistory(): Promise<StreakHistory> {
   if (hasAccessToken()) {
     try {
       const history = ApiHabitHistorySchema.parse(
-        await apiFetch<unknown>("/api/v1/habits/history?days=90", { auth: true }),
+        await apiFetch<unknown>("/api/v1/progress/activity-days?limit=90", { auth: true }),
       );
+      const items = history.items ?? history.days ?? [];
       return StreakHistorySchema.parse(
-        history.items.map((item) => ({
-          date: item.tracking_date,
+        items.map((item) => ({
+          date: String(item.tracking_date ?? item.date ?? item.day ?? ""),
           read:
-            item.minimum_session_completed ||
-            item.actual_reading_verses > 0 ||
-            item.reflection_completed ||
-            item.educational_content_engaged,
+            Boolean(item.minimum_session_completed) ||
+            Number(item.actual_reading_verses ?? item.verses_read ?? 0) > 0 ||
+            Boolean(item.reflection_completed) ||
+            Boolean(item.educational_content_engaged) ||
+            Boolean(item.read) ||
+            Boolean(item.completed),
         })),
       );
     } catch (error) {
@@ -129,11 +128,11 @@ const ApiReEntrySchema = z.object({
 });
 
 export async function startReEntry(reason = "manual_restart") {
+  void reason;
   const response = ApiReEntrySchema.parse(
-    await apiFetch<unknown>("/api/v1/habits/re-entry", {
+    await apiFetch<unknown>("/api/v1/plans/re-entry", {
       auth: true,
       method: "POST",
-      body: JSON.stringify({ reason }),
     }),
   );
   return {

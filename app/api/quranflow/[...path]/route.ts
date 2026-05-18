@@ -1,5 +1,5 @@
 const UPSTREAM_API_BASE_URL =
-  process.env.QURANFLOW_API_BASE_URL ?? "https://quran-flow.onrender.com";
+  process.env.QURANFLOW_API_BASE_URL ?? "https://quran-flow-1.onrender.com";
 
 type ProxyContext = {
   params: Promise<{ path: string[] }>;

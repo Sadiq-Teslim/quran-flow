@@ -28,12 +28,12 @@ export const PersonalizedBundleSchema = z.object({
 export type PersonalizedBundle = z.infer<typeof PersonalizedBundleSchema>;
 
 const ApiGeneratedPlanSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  plan_type: z.string(),
-  verses_per_day: z.number(),
-  difficulty_level: z.string(),
-  reading_time: z.string(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+  plan_type: z.string().optional(),
+  verses_per_day: z.number().optional(),
+  difficulty_level: z.string().optional(),
+  reading_time: z.string().optional(),
 });
 
 const ApiModuleSchema = z.object({
@@ -48,29 +48,23 @@ const ApiFallbackCheckinSchema = z.object({
   message: z.string(),
 });
 
-const ApiPersonalizeSchema = z.object({
-  plan: ApiGeneratedPlanSchema,
-  recommendations: z.array(ApiModuleSchema),
-  checkin_message: z.string(),
-});
-
 function mapPlan(plan: z.infer<typeof ApiGeneratedPlanSchema>) {
   return GeneratedPlanSchema.parse({
-    id: plan.id,
-    name: plan.name,
-    planType: plan.plan_type,
-    versesPerDay: plan.verses_per_day,
-    difficultyLevel: plan.difficulty_level,
-    readingTime: plan.reading_time,
+    id: plan.id ?? `plan_${Date.now()}`,
+    name: plan.name ?? "QuranFlow Daily Plan",
+    planType: plan.plan_type ?? "daily",
+    versesPerDay: plan.verses_per_day ?? 3,
+    difficultyLevel: plan.difficulty_level ?? "gentle",
+    readingTime: plan.reading_time ?? "fajr",
   });
 }
 
 export async function generatePlan(planName?: string) {
+  void planName;
   const plan = ApiGeneratedPlanSchema.parse(
-    await apiFetch<unknown>("/api/v1/personalization/generate-plan", {
+    await apiFetch<unknown>("/api/v1/ai/personalized-plan", {
       auth: true,
       method: "POST",
-      body: JSON.stringify({ plan_name: planName || null }),
     }),
   );
   return mapPlan(plan);
@@ -79,18 +73,19 @@ export async function generatePlan(planName?: string) {
 export async function getRecommendations(limit = 3): Promise<Recommendation[]> {
   if (!hasAccessToken()) return [];
   try {
-    const modules = z.array(ApiModuleSchema).parse(
-      await apiFetch<unknown>(
-        `/api/v1/personalization/recommend-content?limit=${limit}`,
-        { auth: true },
-      ),
+    const feed = z.object({
+      lessons: z.array(ApiModuleSchema).optional(),
+      modules: z.array(ApiModuleSchema).optional(),
+      items: z.array(ApiModuleSchema).optional(),
+    }).parse(
+      await apiFetch<unknown>("/api/v1/education/feed", { auth: true }),
     );
-    return modules.map((module) =>
+    return (feed.lessons ?? feed.modules ?? feed.items ?? []).slice(0, limit).map((module) =>
       RecommendationSchema.parse({
         id: module.id,
         title: module.title,
         description: module.description ?? null,
-        stage: module.stage,
+        stage: String(module.stage),
         minutes: module.duration_minutes ?? null,
       }),
     );
@@ -106,8 +101,10 @@ export async function getFallbackCheckin() {
   }
   try {
     const response = ApiFallbackCheckinSchema.parse(
-      await apiFetch<unknown>("/api/v1/personalization/fallback-checkin", {
+      await apiFetch<unknown>("/api/v1/ai/check-in", {
         auth: true,
+        method: "POST",
+        body: JSON.stringify({ completed_today: false }),
       }),
     );
     return response.message;
@@ -118,25 +115,19 @@ export async function getFallbackCheckin() {
 }
 
 export async function personalize(input?: { planName?: string; recommendationLimit?: number }) {
-  const response = ApiPersonalizeSchema.parse(
-    await apiFetch<unknown>("/api/v1/personalization/personalize", {
+  const plan = mapPlan(
+    ApiGeneratedPlanSchema.parse(
+      await apiFetch<unknown>("/api/v1/ai/personalized-plan", {
       auth: true,
       method: "POST",
-      body: JSON.stringify({
-        plan_name: input?.planName ?? "QuranFlow Daily Plan",
-        recommendation_limit: input?.recommendationLimit ?? 3,
-      }),
     }),
+    ),
   );
+  const recommendations = await getRecommendations(input?.recommendationLimit ?? 3);
+  const checkinMessage = await getFallbackCheckin();
   return PersonalizedBundleSchema.parse({
-    plan: mapPlan(response.plan),
-    recommendations: response.recommendations.map((module) => ({
-      id: module.id,
-      title: module.title,
-      description: module.description ?? null,
-      stage: module.stage,
-      minutes: module.duration_minutes ?? null,
-    })),
-    checkinMessage: response.checkin_message,
+    plan,
+    recommendations,
+    checkinMessage,
   });
 }

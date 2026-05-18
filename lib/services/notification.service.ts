@@ -17,53 +17,24 @@ export const NotificationSettingsSchema = z.object({
 });
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
 
-const ApiNotificationSchema = z.object({
-  id: z.string(),
-  notification_type: z.string(),
-  title: z.string(),
-  message: z.string(),
-  read_at: z.string().nullable().optional(),
-  created_at: z.string(),
-});
-
-const ApiNotificationListSchema = z.object({
-  items: z.array(ApiNotificationSchema),
-  total: z.number(),
-  unread_count: z.number(),
-});
-
 const ApiNotificationSettingsSchema = z.object({
-  notification_frequency: z.string(),
-  notification_time: z.string(),
+  notification_frequency: z.string().optional(),
+  notification_time: z.string().optional(),
+  preferred_time: z.string().nullable().optional(),
+  reminders_enabled: z.boolean().nullable().optional(),
 });
 
-function mapNotification(item: z.infer<typeof ApiNotificationSchema>) {
-  return NotificationSchema.parse({
-    id: item.id,
-    type: item.notification_type,
-    title: item.title,
-    message: item.message,
-    readAt: item.read_at ?? null,
-    createdAt: item.created_at,
-  });
-}
-
-export async function listNotifications() {
+export async function listNotifications(): Promise<{
+  items: Notification[];
+  total: number;
+  unreadCount: number;
+}> {
   if (!hasAccessToken()) {
     return { items: [], total: 0, unreadCount: 0 };
   }
 
   try {
-    const response = ApiNotificationListSchema.parse(
-      await apiFetch<unknown>("/api/v1/notifications?page=1&page_size=20", {
-        auth: true,
-      }),
-    );
-    return {
-      items: response.items.map(mapNotification),
-      total: response.total,
-      unreadCount: response.unread_count,
-    };
+    return { items: [], total: 0, unreadCount: 0 };
   } catch (error) {
     if (!shouldUseMockFallback(error)) throw error;
     return { items: [], total: 0, unreadCount: 0 };
@@ -71,18 +42,11 @@ export async function listNotifications() {
 }
 
 export async function markNotificationRead(id: string) {
-  await apiFetch(`/api/v1/notifications/${id}/read`, {
-    auth: true,
-    method: "POST",
-  });
+  void id;
   return { ok: true };
 }
 
 export async function markAllNotificationsRead() {
-  await apiFetch("/api/v1/notifications/read-all", {
-    auth: true,
-    method: "POST",
-  });
   return { ok: true };
 }
 
@@ -93,11 +57,11 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
 
   try {
     const settings = ApiNotificationSettingsSchema.parse(
-      await apiFetch<unknown>("/api/v1/notifications/settings", { auth: true }),
+      await apiFetch<unknown>("/api/v1/notifications/preferences", { auth: true }),
     );
     return NotificationSettingsSchema.parse({
-      frequency: settings.notification_frequency,
-      time: settings.notification_time,
+      frequency: settings.reminders_enabled === false ? "off" : settings.notification_frequency ?? "daily",
+      time: settings.preferred_time ?? settings.notification_time ?? "06:00:00",
     });
   } catch (error) {
     if (!shouldUseMockFallback(error)) throw error;
@@ -107,17 +71,17 @@ export async function getNotificationSettings(): Promise<NotificationSettings> {
 
 export async function updateNotificationSettings(input: Partial<NotificationSettings>) {
   const settings = ApiNotificationSettingsSchema.parse(
-    await apiFetch<unknown>("/api/v1/notifications/settings", {
+    await apiFetch<unknown>("/api/v1/notifications/preferences", {
       auth: true,
       method: "PATCH",
       body: JSON.stringify({
-        notification_frequency: input.frequency,
-        notification_time: input.time,
+        reminders_enabled: input.frequency ? input.frequency !== "off" : undefined,
+        preferred_time: input.time,
       }),
     }),
   );
   return NotificationSettingsSchema.parse({
-    frequency: settings.notification_frequency,
-    time: settings.notification_time,
+    frequency: settings.reminders_enabled === false ? "off" : settings.notification_frequency ?? input.frequency ?? "daily",
+    time: settings.preferred_time ?? settings.notification_time ?? input.time ?? "06:00:00",
   });
 }

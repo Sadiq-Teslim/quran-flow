@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   apiFetch,
   clearAuthTokens,
-  hasAccessToken,
   storeAuthTokens,
 } from "@/lib/api/client";
 import { clearProfileOverride } from "@/lib/services/user.service";
@@ -24,47 +23,35 @@ export const LoginPayloadSchema = z.object({
 export type LoginPayload = z.infer<typeof LoginPayloadSchema>;
 
 const SignupResponseSchema = z.object({
-  user_id: z.string(),
+  user_id: z.string().optional(),
+  id: z.string().optional(),
   email: z.string().email(),
   message: z.string().default("User created successfully"),
 });
 
-const UpgradeAnonymousResponseSchema = z.object({
-  user_id: z.string(),
-  email: z.string().email(),
-  anonymous: z.boolean().default(false),
-  message: z.string().default("Account upgraded"),
-});
-
 const TokenResponseSchema = z.object({
   access_token: z.string(),
-  refresh_token: z.string(),
+  refresh_token: z.string().optional(),
   token_type: z.string().default("bearer"),
-  expires_in: z.number(),
+  expires_in: z.number().optional(),
 });
 
-const AnonymousLoginResponseSchema = TokenResponseSchema.extend({
-  user_id: z.string(),
-  anonymous: z.boolean().default(true),
-});
-
-const Enable2FAResponseSchema = z.object({
-  qr_code: z.string(),
-  secret: z.string(),
-  otpauth_uri_account: z.string(),
-});
+type Enable2FAResponse = {
+  qr_code: string;
+  secret: string;
+  otpauth_uri_account: string;
+};
 
 export async function signup(payload: SignupPayload) {
   const parsed = SignupPayloadSchema.parse(payload);
   return SignupResponseSchema.parse(
-    await apiFetch<unknown>("/api/v1/auth/signup", {
+    await apiFetch<unknown>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify({
         email: parsed.email,
         password: parsed.password,
         first_name: parsed.firstName,
         last_name: parsed.lastName,
-        user_type: parsed.userType,
       }),
     }),
   );
@@ -73,21 +60,7 @@ export async function signup(payload: SignupPayload) {
 export async function createOnboardingAccount(payload: SignupPayload) {
   const parsed = SignupPayloadSchema.parse(payload);
 
-  if (hasAccessToken()) {
-    await apiFetch<unknown>("/api/v1/auth/upgrade-anonymous", {
-      auth: true,
-      method: "POST",
-      body: JSON.stringify({
-        email: parsed.email,
-        password: parsed.password,
-        first_name: parsed.firstName,
-        last_name: parsed.lastName,
-      }),
-    }).then((response) => UpgradeAnonymousResponseSchema.parse(response));
-  } else {
-    await signup(parsed);
-  }
-
+  await signup(parsed);
   return login({ email: parsed.email, password: parsed.password });
 }
 
@@ -108,13 +81,7 @@ export async function login(payload: LoginPayload) {
 }
 
 export async function startAnonymousSession() {
-  const tokens = AnonymousLoginResponseSchema.parse(
-    await apiFetch<unknown>("/api/v1/auth/anonymous", {
-      method: "POST",
-    }),
-  );
-  storeAuthTokens(tokens);
-  return tokens;
+  return { anonymous: true };
 }
 
 export async function logout() {
@@ -129,28 +96,15 @@ export async function logout() {
   }
 }
 
-export async function enable2FA() {
-  return Enable2FAResponseSchema.parse(
-    await apiFetch<unknown>("/api/v1/auth/enable-2fa", {
-      auth: true,
-      method: "POST",
-    }),
-  );
+export async function enable2FA(): Promise<Enable2FAResponse> {
+  throw new Error("Two-factor authentication is not available on the new backend yet.");
 }
 
-export async function confirm2FA(input: { code: string; secret: string }) {
-  await apiFetch("/api/v1/auth/confirm-2fa", {
-    auth: true,
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return { ok: true };
+export async function confirm2FA(input: { code: string; secret: string }): Promise<{ ok: true }> {
+  void input;
+  throw new Error("Two-factor authentication is not available on the new backend yet.");
 }
 
-export async function disable2FA() {
-  await apiFetch("/api/v1/auth/disable-2fa", {
-    auth: true,
-    method: "POST",
-  });
-  return { ok: true };
+export async function disable2FA(): Promise<{ ok: true }> {
+  throw new Error("Two-factor authentication is not available on the new backend yet.");
 }

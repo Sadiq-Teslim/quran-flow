@@ -45,14 +45,21 @@ const ApiUserSchema = z.object({
   username: z.string().nullable().optional(),
   first_name: z.string().nullable().optional(),
   last_name: z.string().nullable().optional(),
-  user_type: z.string(),
-  preferred_language: z.string(),
-  preferred_reading_time: z.string(),
+  user_type: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  preferred_language: z.string().nullable().optional(),
+  language: z.string().nullable().optional(),
+  preferred_reading_time: z.string().nullable().optional(),
+  reading_time: z.string().nullable().optional(),
+  onboarding_completed: z.boolean().nullable().optional(),
+  onboarded: z.boolean().nullable().optional(),
   anonymous_mode: z.boolean().optional(),
 });
 
 const ApiOnboardingStatusSchema = z.object({
-  completed: z.boolean(),
+  completed: z.boolean().optional(),
+  onboarding_completed: z.boolean().optional(),
+  onboarded: z.boolean().optional(),
 });
 
 function identityFromUserType(userType: string) {
@@ -110,16 +117,19 @@ function mapApiUser(
   onboarded: boolean,
 ): User {
   const profileOverride = getProfileOverride();
+  const rawCategory = user.category ?? user.user_type ?? "beginner";
   const category = profileOverride?.category
     ? profileOverride.category
-    : UserSchema.shape.category.safeParse(user.user_type).success
-      ? user.user_type
+    : UserSchema.shape.category.safeParse(rawCategory).success
+      ? rawCategory
       : "beginner";
   const identity = profileOverride?.title
     ? profileOverride.title
     : identityFromUserType(category);
   const name = displayNameFromUser(user, profileOverride);
-  const preferredTime = mapApiPreferredTime(user.preferred_reading_time);
+  const preferredTime = mapApiPreferredTime(
+    user.preferred_reading_time ?? user.reading_time ?? "fajr",
+  );
 
   return UserSchema.parse({
     id: user.id,
@@ -127,7 +137,7 @@ function mapApiUser(
     email: user.anonymous_mode ? "Private session" : user.email,
     identity,
     identityEarnedAt: new Date().toISOString().slice(0, 10),
-    language: user.preferred_language,
+    language: user.preferred_language ?? user.language ?? "en",
     preferredTime,
     category,
     onboarded,
@@ -138,13 +148,24 @@ function mapApiUser(
 export async function getUser(): Promise<User> {
   if (hasAccessToken()) {
     try {
-      const [user, onboarding] = await Promise.all([
-        apiFetch<unknown>("/api/v1/users/me", { auth: true }),
-        apiFetch<unknown>("/api/v1/users/me/onboarding", { auth: true }),
+      const [authUser, profile] = await Promise.all([
+        apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
+        apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
       ]);
+      const user = ApiUserSchema.parse({
+        ...(typeof authUser === "object" && authUser ? authUser : {}),
+        ...(typeof profile === "object" && profile ? profile : {}),
+      });
+      const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
       return mapApiUser(
-        ApiUserSchema.parse(user),
-        ApiOnboardingStatusSchema.parse(onboarding).completed,
+        user,
+        Boolean(
+          onboarding.completed ??
+            onboarding.onboarding_completed ??
+            onboarding.onboarded ??
+            user.onboarding_completed ??
+            user.onboarded,
+        ),
       );
     } catch (error) {
       if (!shouldUseMockFallback(error)) throw error;
@@ -162,22 +183,18 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
 
   if (hasAccessToken()) {
     try {
-      await apiFetch("/api/v1/users/me/onboarding", {
+      await apiFetch("/api/v1/onboarding/profile", {
         auth: true,
-        method: "PATCH",
+        method: "POST",
         body: JSON.stringify({
-          step: 5,
           user_type: profile.category,
           reading_frequency: mapBackendReadingFrequency(payload.frequency),
           preferred_reading_time: mapToBackendPreferredTime(payload.preferredTime),
           motivation_type: mapBackendMotivation(payload.motivation),
-          personal_struggles: payload.struggles,
-          daily_verse_target: profile.plan.noZeroDayVerses,
+          struggles: payload.struggles,
+          locale: "en",
+          goals: [profile.title],
         }),
-      });
-      await apiFetch("/api/v1/users/me/onboarding/complete", {
-        auth: true,
-        method: "POST",
       });
       return getUser();
     } catch (error) {

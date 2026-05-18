@@ -43,19 +43,16 @@ const ApiModuleSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable().optional(),
-  stage: z.string(),
+  stage: z.union([z.string(), z.number()]).optional(),
+  stage_name: z.string().nullable().optional(),
   order_index: z.number().nullable().optional(),
+  order: z.number().nullable().optional(),
   duration_minutes: z.number().nullable().optional(),
+  minutes: z.number().nullable().optional(),
   content_markdown: z.string().nullable().optional(),
-});
-
-const ApiProgressSchema = z.object({
-  module_id: z.string(),
-  is_completed: z.boolean(),
-});
-
-const ApiProgressListSchema = z.object({
-  items: z.array(ApiProgressSchema),
+  body: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  completed: z.boolean().optional(),
 });
 
 const ApiStagesSchema = z.object({
@@ -72,13 +69,14 @@ const ApiStagesSchema = z.object({
 
 type ApiModule = z.infer<typeof ApiModuleSchema>;
 
-function stageNumber(stage: string) {
-  const normalized = stage.toLowerCase();
+function stageNumber(stage: string | number | undefined) {
+  if (typeof stage === "number") return stage;
+  const normalized = (stage ?? "foundation").toLowerCase();
   if (normalized.includes("foundation")) return 1;
   if (normalized.includes("understanding")) return 2;
   if (normalized.includes("application")) return 3;
   if (normalized.includes("reflection")) return 4;
-  return Number.parseInt(stage, 10) || 1;
+  return Number.parseInt(normalized, 10) || 1;
 }
 
 function stageName(stage: string) {
@@ -91,31 +89,24 @@ function mapApiModule(module: ApiModule): Lesson {
   return LessonSchema.parse({
     id: module.id,
     stage,
-    stageName: stageName(module.stage),
+    stageName: module.stage_name ?? stageName(String(module.stage ?? stage)),
     title: module.title,
-    minutes: module.duration_minutes ?? 3,
-    order: module.order_index ?? 0,
-    summary: module.description ?? "A short guided lesson for today's Quran journey.",
+    minutes: module.duration_minutes ?? module.minutes ?? 3,
+    order: module.order_index ?? module.order ?? 0,
+    summary:
+      module.summary ??
+      module.description ??
+      "A short guided lesson for today's Quran journey.",
     body:
       module.content_markdown ??
+      module.body ??
       module.description ??
       "This module is being prepared by the QuranFlow learning team.",
   });
 }
 
-async function getRemoteCompletedLessonIds() {
-  if (!hasAccessToken()) return [];
-  try {
-    const progress = ApiProgressListSchema.parse(
-      await apiFetch<unknown>("/api/v1/education/me/progress", { auth: true }),
-    );
-    return progress.items
-      .filter((item) => item.is_completed)
-      .map((item) => item.module_id);
-  } catch (error) {
-    if (!shouldUseMockFallback(error)) throw error;
-    return [];
-  }
+async function getRemoteCompletedLessonIds(): Promise<string[]> {
+  return [];
 }
 
 function buildLearnPath(lessons: Lesson[], completedLessonIds: string[]): LearnPath {
@@ -155,11 +146,19 @@ function buildLearnPath(lessons: Lesson[], completedLessonIds: string[]): LearnP
 
 export async function getLearnPath(): Promise<LearnPath> {
   try {
-    const modules = z
-      .array(ApiModuleSchema)
-      .parse(await apiFetch<unknown>("/api/v1/education/modules"));
+    const feed = z
+      .object({
+        lessons: z.array(ApiModuleSchema).optional(),
+        modules: z.array(ApiModuleSchema).optional(),
+        items: z.array(ApiModuleSchema).optional(),
+      })
+      .parse(await apiFetch<unknown>("/api/v1/education/feed", { auth: hasAccessToken() }));
+    const modules = feed.lessons ?? feed.modules ?? feed.items ?? [];
     if (modules.length > 0) {
-      return buildLearnPath(modules.map(mapApiModule), await getRemoteCompletedLessonIds());
+      return buildLearnPath(
+        modules.map(mapApiModule),
+        modules.filter((module) => module.completed).map((module) => module.id),
+      );
     }
   } catch {
     // The backend currently has no seed modules in some environments.
@@ -174,7 +173,7 @@ export async function getLesson(
 ): Promise<Lesson & { completed: boolean }> {
   try {
     const lessonModule = ApiModuleSchema.parse(
-      await apiFetch<unknown>(`/api/v1/education/modules/${id}`),
+      await apiFetch<unknown>(`/api/v1/education/lessons/${id}`),
     );
     const completedIds = await getRemoteCompletedLessonIds();
     return { ...mapApiModule(lessonModule), completed: completedIds.includes(id) };
@@ -192,10 +191,9 @@ export async function getLesson(
 export async function markLessonComplete(id: string): Promise<{ ok: true }> {
   if (hasAccessToken()) {
     try {
-      await apiFetch(`/api/v1/education/modules/${id}/complete`, {
+      await apiFetch(`/api/v1/education/lessons/${id}/complete`, {
         auth: true,
         method: "POST",
-        body: JSON.stringify({ engagement_time_seconds: 0 }),
       });
       return { ok: true };
     } catch (error) {

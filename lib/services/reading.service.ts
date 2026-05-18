@@ -3,6 +3,9 @@ import { apiFetch, hasAccessToken, shouldUseMockFallback } from "@/lib/api/clien
 import { mockDb } from "@/lib/mocks/db";
 import { simulateNetwork } from "@/lib/mocks/delay";
 
+const DEFAULT_TRANSLATION_ID = 20;
+const DEFAULT_TAFSIR_ID = 169;
+
 export const VerseSchema = z.object({
   id: z.number().optional(),
   surah: z.number(),
@@ -65,157 +68,245 @@ export const ReadingHistoryItemSchema = z.object({
 });
 export type ReadingHistoryItem = z.infer<typeof ReadingHistoryItemSchema>;
 
-const ApiVerseSchema = z.object({
-  id: z.number(),
-  chapter_id: z.number(),
-  verse_number: z.number(),
-  text_ar: z.string(),
-  text_transliteration: z.string().nullable().optional(),
-  text_en: z.string(),
-  tafsir_summary: z.string().nullable().optional(),
-  key_lesson: z.string().nullable().optional(),
-  actionable_takeaway: z.string().nullable().optional(),
-});
+const ApiTranslatedNameSchema = z
+  .object({ name: z.string().nullable().optional() })
+  .nullable()
+  .optional();
 
 const ApiChapterSchema = z.object({
   id: z.number(),
-  number: z.number(),
-  name_ar: z.string().optional(),
-  name_en: z.string(),
-  name_transliteration: z.string().nullable().optional(),
-  revelation_type: z.string().optional(),
-  verse_count: z.number(),
+  name_arabic: z.string().optional(),
+  name_simple: z.string(),
+  name_complex: z.string().optional(),
+  revelation_place: z.string().optional(),
+  verses_count: z.number(),
+  translated_name: ApiTranslatedNameSchema,
 });
 
-const ApiChapterListSchema = z.object({
-  items: z.array(ApiChapterSchema),
+const ApiChaptersSchema = z.object({
+  chapters: z.array(ApiChapterSchema),
 });
 
-const ApiChapterDetailSchema = z.object({
-  chapter: ApiChapterSchema,
+const ApiScriptVerseSchema = z.object({
+  id: z.number(),
+  verse_key: z.string(),
+  text_uthmani: z.string().optional(),
+  text_imlaei: z.string().optional(),
 });
 
-const ApiVerseLocalizationsSchema = z.object({
-  verse_id: z.number(),
-  items: z.array(
+const ApiScriptVersesSchema = z.object({
+  verses: z.array(ApiScriptVerseSchema),
+});
+
+const ApiVerseByKeySchema = z.object({
+  verse: z.object({
+    id: z.number(),
+    verse_key: z.string(),
+    verse_number: z.number(),
+    words: z
+      .array(
+        z.object({
+          text: z.string().optional(),
+          transliteration: z
+            .object({ text: z.string().nullable().optional() })
+            .nullable()
+            .optional(),
+        }),
+      )
+      .optional(),
+  }),
+});
+
+const ApiTranslationsSchema = z.object({
+  translations: z.array(
     z.object({
-      id: z.string(),
-      verse_id: z.number(),
-      language: z.string(),
-      content_kind: z.string(),
-      content: z.string(),
-      review_status: z.string(),
+      id: z.number(),
+      resource_id: z.number(),
+      text: z.string(),
     }),
   ),
 });
 
-const ApiReadingHistorySchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string(),
-      chapter_id: z.number(),
-      start_verse: z.number(),
-      end_verse: z.number(),
-      verses_completed: z.number(),
-      session_duration_minutes: z.number().nullable().optional(),
-      device_type: z.string().nullable().optional(),
-      completed: z.boolean(),
-      completed_at: z.string().nullable().optional(),
-      created_at: z.string(),
-    }),
-  ),
-  total: z.number(),
+const ApiTafsirSchema = z.object({
+  tafsir: z
+    .object({
+      text: z.string().nullable().optional(),
+      resource_name: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 
 const ApiTodayPlanSchema = z.object({
-  plan_id: z.string().nullable().optional(),
-  verses_per_day: z.number(),
-  verses: z.array(ApiVerseSchema),
+  id: z.string().optional(),
+  plan_id: z.string().optional(),
+  date: z.string().optional(),
+  items: z.array(z.unknown()).optional(),
+  plan_items: z.array(z.unknown()).optional(),
+  verses: z.array(z.unknown()).optional(),
+  verses_per_day: z.number().optional(),
 });
 
-type ApiVerse = z.infer<typeof ApiVerseSchema>;
+const ApiReadingSessionsSchema = z.object({
+  sessions: z.array(z.record(z.string(), z.unknown())).optional(),
+  items: z.array(z.record(z.string(), z.unknown())).optional(),
+});
+
 type ApiChapter = z.infer<typeof ApiChapterSchema>;
+type ApiScriptVerse = z.infer<typeof ApiScriptVerseSchema>;
 
 const chapterCache = new Map<number, ApiChapter>();
+const scriptCache = new Map<number, ApiScriptVerse[]>();
+
+function stripHtml(value?: string | null) {
+  return (value ?? "")
+    .replace(/<sup[^>]*>.*?<\/sup>/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseVerseKey(verseKey: string) {
+  const [surah, ayah] = verseKey.split(":").map((part) => Number.parseInt(part, 10));
+  return { surah, ayah };
+}
 
 async function getChapter(chapterId: number): Promise<ApiChapter> {
   const cached = chapterCache.get(chapterId);
   if (cached) return cached;
 
-  const detail = ApiChapterDetailSchema.parse(
-    await apiFetch<unknown>(`/api/v1/quran/chapters/${chapterId}?page=1&per_page=1`),
+  const response = ApiChapterSchema.parse(
+    await apiFetch<unknown>(`/api/v1/quran/chapters/${chapterId}`),
   );
-  chapterCache.set(chapterId, detail.chapter);
-  return detail.chapter;
+  chapterCache.set(chapterId, response);
+  return response;
 }
 
-async function mapApiVerse(verse: ApiVerse): Promise<Verse> {
-  const chapter = await getChapter(verse.chapter_id);
-  return VerseSchema.parse({
-    id: verse.id,
-    surah: verse.chapter_id,
-    surahName: chapter.name_en,
-    ayah: verse.verse_number,
-    arabic: verse.text_ar,
-    transliteration: verse.text_transliteration ?? "",
-    translation: verse.text_en,
-    lesson: verse.key_lesson ?? verse.tafsir_summary ?? undefined,
-    takeaway: verse.actionable_takeaway ?? undefined,
-  });
+async function getChapterScript(chapterId: number) {
+  const cached = scriptCache.get(chapterId);
+  if (cached) return cached;
+
+  const response = ApiScriptVersesSchema.parse(
+    await apiFetch<unknown>(
+      `/api/v1/quran/quran/verses/uthmani?chapter_number=${chapterId}`,
+    ),
+  );
+  scriptCache.set(chapterId, response.verses);
+  return response.verses;
 }
 
 function mapApiChapter(chapter: ApiChapter): Chapter {
   return ChapterSchema.parse({
     id: chapter.id,
-    number: chapter.number,
-    nameArabic: chapter.name_ar ?? "",
-    nameEnglish: chapter.name_en,
-    meaning: chapter.name_transliteration ?? null,
-    revelationType: chapter.revelation_type ?? "",
-    verseCount: chapter.verse_count,
+    number: chapter.id,
+    nameArabic: chapter.name_arabic ?? "",
+    nameEnglish: chapter.name_simple,
+    meaning: chapter.translated_name?.name ?? chapter.name_complex ?? null,
+    revelationType: chapter.revelation_place ?? "",
+    verseCount: chapter.verses_count,
+  });
+}
+
+async function getTranslation(verseKey: string) {
+  const response = ApiTranslationsSchema.parse(
+    await apiFetch<unknown>(
+      `/api/v1/quran/translations/${DEFAULT_TRANSLATION_ID}/by_ayah/${verseKey}`,
+    ),
+  );
+  return stripHtml(response.translations[0]?.text);
+}
+
+async function getTafsir(verseKey: string) {
+  const response = ApiTafsirSchema.parse(
+    await apiFetch<unknown>(
+      `/api/v1/quran/tafsirs/${DEFAULT_TAFSIR_ID}/by_ayah/${verseKey}`,
+    ),
+  );
+  return stripHtml(response.tafsir?.text);
+}
+
+async function mapVerseByKey(verseKey: string): Promise<Verse> {
+  const [{ verse }, chapter, script, translation, tafsir] = await Promise.all([
+    ApiVerseByKeySchema.parse(
+      await apiFetch<unknown>(
+        `/api/v1/quran/verses/by_key/${verseKey}?words=true`,
+      ),
+    ),
+    getChapter(parseVerseKey(verseKey).surah),
+    getChapterScript(parseVerseKey(verseKey).surah),
+    getTranslation(verseKey),
+    getTafsir(verseKey).catch(() => ""),
+  ]);
+  const { surah, ayah } = parseVerseKey(verse.verse_key);
+  const scriptVerse = script.find((item) => item.verse_key === verse.verse_key);
+  const arabic =
+    scriptVerse?.text_uthmani ??
+    verse.words?.map((word) => word.text).filter(Boolean).join(" ") ??
+    "";
+  const transliteration =
+    verse.words
+      ?.map((word) => word.transliteration?.text)
+      .filter(Boolean)
+      .join(" ") ?? "";
+
+  return VerseSchema.parse({
+    id: verse.id,
+    surah,
+    surahName: chapter.name_simple,
+    ayah,
+    arabic,
+    transliteration,
+    translation,
+    lesson: tafsir ? tafsir.slice(0, 700) : undefined,
   });
 }
 
 export async function listChapters(): Promise<Chapter[]> {
-  const responses = await Promise.all([
-    apiFetch<unknown>("/api/v1/quran/chapters?page=1&per_page=50"),
-    apiFetch<unknown>("/api/v1/quran/chapters?page=2&per_page=50"),
-    apiFetch<unknown>("/api/v1/quran/chapters?page=3&per_page=50"),
-  ]);
-  const chapters = responses.flatMap(
-    (response) => ApiChapterListSchema.parse(response).items,
-  );
-  for (const chapter of chapters) chapterCache.set(chapter.number, chapter);
-  return chapters.map(mapApiChapter);
+  const response = ApiChaptersSchema.parse(await apiFetch<unknown>("/api/v1/quran/chapters"));
+  for (const chapter of response.chapters) chapterCache.set(chapter.id, chapter);
+  return response.chapters.map(mapApiChapter);
 }
 
 export async function searchVerses(query: string): Promise<Verse[]> {
   if (query.trim().length < 2) return [];
-  const response = z
-    .object({ items: z.array(ApiVerseSchema) })
-    .parse(
-      await apiFetch<unknown>(
-        `/api/v1/quran/search?q=${encodeURIComponent(query.trim())}&page=1&per_page=20`,
-      ),
-    );
-  return Promise.all(response.items.map(mapApiVerse));
+  try {
+    const response = z
+      .object({
+        results: z.array(z.record(z.string(), z.unknown())).optional(),
+        verses: z.array(z.record(z.string(), z.unknown())).optional(),
+      })
+      .parse(
+        await apiFetch<unknown>(
+          `/api/v1/quran/search?mode=quick&query=${encodeURIComponent(
+            query.trim(),
+          )}&page=1&size=10`,
+        ),
+      );
+    const records = response.results ?? response.verses ?? [];
+    const keys = records
+      .map((record) => String(record.verse_key ?? record.ayah_key ?? ""))
+      .filter(Boolean)
+      .slice(0, 5);
+    return Promise.all(keys.map(mapVerseByKey));
+  } catch {
+    await simulateNetwork(100, 250);
+    return mockDb.verses
+      .filter((verse) =>
+        `${verse.surahName} ${verse.translation} ${verse.arabic}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+      )
+      .map((verse) => VerseSchema.parse(verse));
+  }
 }
 
-export async function getVerseLocalizations(verseId?: number) {
-  if (!verseId) return [];
-  const response = ApiVerseLocalizationsSchema.parse(
-    await apiFetch<unknown>(`/api/v1/quran/verses/${verseId}/localizations`),
-  );
-  return response.items.map((item) =>
-    VerseLocalizationSchema.parse({
-      id: item.id,
-      verseId: item.verse_id,
-      language: item.language,
-      kind: item.content_kind,
-      content: item.content,
-      reviewStatus: item.review_status,
-    }),
-  );
+export async function getVerseLocalizations(_verseId?: number): Promise<VerseLocalization[]> {
+  void _verseId;
+  return [];
 }
 
 export async function getReadingHistory(): Promise<{
@@ -224,28 +315,40 @@ export async function getReadingHistory(): Promise<{
 }> {
   if (!hasAccessToken()) return { items: [], total: 0 };
   try {
-    const response = ApiReadingHistorySchema.parse(
-      await apiFetch<unknown>("/api/v1/quran/reading-history?page=1&page_size=20", {
+    const response = ApiReadingSessionsSchema.parse(
+      await apiFetch<unknown>("/api/v1/reading-sessions?limit=20", {
         auth: true,
       }),
     );
-    return {
-      total: response.total,
-      items: response.items.map((item) =>
-        ReadingHistoryItemSchema.parse({
-          id: item.id,
-          chapterId: item.chapter_id,
-          startVerse: item.start_verse,
-          endVerse: item.end_verse,
-          versesCompleted: item.verses_completed,
-          durationMinutes: item.session_duration_minutes ?? null,
-          deviceType: item.device_type ?? null,
-          completed: item.completed,
-          completedAt: item.completed_at ?? null,
-          createdAt: item.created_at,
-        }),
-      ),
-    };
+    const sessions = response.sessions ?? response.items ?? [];
+    const items = sessions.map((session, index) => {
+      const verseStart = String(session.verse_start ?? session.start_verse ?? "1:1");
+      const verseEnd = String(session.verse_end ?? session.end_verse ?? verseStart);
+      const start = parseVerseKey(verseStart);
+      const end = parseVerseKey(verseEnd);
+      return ReadingHistoryItemSchema.parse({
+        id: String(session.id ?? `session_${index}`),
+        chapterId: start.surah || 1,
+        startVerse: start.ayah || 1,
+        endVerse: end.ayah || start.ayah || 1,
+        versesCompleted: Number(session.verses_read ?? session.verses_completed ?? 1),
+        durationMinutes:
+          typeof session.minutes === "number"
+            ? session.minutes
+            : typeof session.session_duration_minutes === "number"
+              ? session.session_duration_minutes
+              : null,
+        deviceType: String(session.source ?? session.device_type ?? "web"),
+        completed: Boolean(session.completed ?? session.finished_at ?? true),
+        completedAt:
+          typeof session.finished_at === "string" ? session.finished_at : null,
+        createdAt:
+          typeof session.created_at === "string"
+            ? session.created_at
+            : new Date().toISOString(),
+      });
+    });
+    return { items, total: items.length };
   } catch (error) {
     if (!shouldUseMockFallback(error)) throw error;
     return { items: [], total: 0 };
@@ -256,22 +359,31 @@ export async function getTodayPlan(): Promise<TodayPlan> {
   if (hasAccessToken()) {
     try {
       const plan = ApiTodayPlanSchema.parse(
-        await apiFetch<unknown>("/api/v1/quran/today", { auth: true }),
+        await apiFetch<unknown>("/api/v1/plans/today", { auth: true }),
       );
-      if (plan.verses.length > 0) {
-        const first = plan.verses[0];
-        const last = plan.verses[plan.verses.length - 1];
-        const chapter = await getChapter(first.chapter_id);
+      const records = plan.items ?? plan.plan_items ?? plan.verses ?? [];
+      const verseKeys = records
+        .map((record) => {
+          if (typeof record === "string") return record;
+          if (typeof record !== "object" || record === null) return "";
+          const object = record as Record<string, unknown>;
+          return String(object.verse_key ?? object.verse_start ?? object.ayah_key ?? "");
+        })
+        .filter(Boolean);
+      if (verseKeys.length > 0) {
+        const first = parseVerseKey(verseKeys[0]);
+        const last = parseVerseKey(verseKeys[verseKeys.length - 1]);
+        const chapter = await getChapter(first.surah);
         return TodayPlanSchema.parse({
-          id: plan.plan_id ?? `plan_${new Date().toISOString().slice(0, 10)}`,
-          date: new Date().toISOString().slice(0, 10),
-          surah: first.chapter_id,
-          surahName: chapter.name_en,
-          startAyah: first.verse_number,
-          endAyah: last.verse_number,
-          estimatedMinutes: Math.max(1, Math.ceil(plan.verses_per_day * 1.5)),
+          id: plan.id ?? plan.plan_id ?? `plan_${new Date().toISOString().slice(0, 10)}`,
+          date: plan.date ?? new Date().toISOString().slice(0, 10),
+          surah: first.surah,
+          surahName: chapter.name_simple,
+          startAyah: first.ayah,
+          endAyah: last.ayah,
+          estimatedMinutes: Math.max(1, Math.ceil(verseKeys.length * 1.5)),
           anchor: "after_fajr",
-          verses: plan.verses.map((v) => v.verse_number),
+          verses: verseKeys.map((key) => parseVerseKey(key).ayah),
         });
       }
     } catch (error) {
@@ -285,10 +397,7 @@ export async function getTodayPlan(): Promise<TodayPlan> {
 
 export async function getVerse(surah: number, ayah: number): Promise<Verse> {
   try {
-    const verse = ApiVerseSchema.parse(
-      await apiFetch<unknown>(`/api/v1/quran/chapters/${surah}/verses/${ayah}`),
-    );
-    return mapApiVerse(verse);
+    return await mapVerseByKey(`${surah}:${ayah}`);
   } catch {
     // Keep the prototype readable if the public API is asleep or missing a verse.
   }
@@ -305,7 +414,7 @@ export async function getVerse(surah: number, ayah: number): Promise<Verse> {
 export async function getNextVerse(surah: number, ayah: number): Promise<Verse | null> {
   try {
     const chapter = await getChapter(surah);
-    if (ayah < chapter.verse_count) return getVerse(surah, ayah + 1);
+    if (ayah < chapter.verses_count) return getVerse(surah, ayah + 1);
     if (surah < 114) return getVerse(surah + 1, 1);
     return null;
   } catch {
@@ -326,7 +435,7 @@ export async function getPrevVerse(surah: number, ayah: number): Promise<Verse |
     if (ayah > 1) return getVerse(surah, ayah - 1);
     if (surah <= 1) return null;
     const prevChapter = await getChapter(surah - 1);
-    return getVerse(prevChapter.number, prevChapter.verse_count);
+    return getVerse(prevChapter.id, prevChapter.verses_count);
   } catch {
     // Fall back to the local demo data below.
   }
@@ -340,18 +449,16 @@ export async function getPrevVerse(surah: number, ayah: number): Promise<Verse |
   return VerseSchema.parse(sorted[idx - 1]);
 }
 
-export async function saveReading(_input: { surah: number; ayah: number }): Promise<{ ok: true }> {
+export async function saveReading(input: { surah: number; ayah: number }): Promise<{ ok: true }> {
   if (hasAccessToken()) {
     try {
-      await apiFetch("/api/v1/quran/log-reading", {
+      await apiFetch("/api/v1/reading-sessions", {
         auth: true,
         method: "POST",
         body: JSON.stringify({
-          chapter_id: _input.surah,
-          start_verse: _input.ayah,
-          end_verse: _input.ayah,
-          session_duration_minutes: 0,
-          device_type: "web",
+          verse_start: `${input.surah}:${input.ayah}`,
+          verse_end: `${input.surah}:${input.ayah}`,
+          source: "web",
         }),
       });
       return { ok: true };

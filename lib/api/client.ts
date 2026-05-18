@@ -14,6 +14,12 @@ type ApiFetchOptions = RequestInit & {
   retryOnUnauthorized?: boolean;
 };
 
+type ApiEnvelope<T> = {
+  data?: T;
+  meta?: unknown;
+  errors?: unknown[];
+};
+
 export class ApiError extends Error {
   status: number;
   payload: unknown;
@@ -132,16 +138,7 @@ export async function apiFetch<T>(
     : await response.text();
 
   if (!response.ok) {
-    const message =
-      typeof payload === "object" &&
-      payload !== null &&
-      "error" in payload &&
-      typeof payload.error === "object" &&
-      payload.error !== null &&
-      "message" in payload.error &&
-      typeof payload.error.message === "string"
-        ? payload.error.message
-        : `QuranFlow API request failed with ${response.status}`;
+    const message = errorMessage(payload, response.status);
     if (auth && response.status === 401 && retryOnUnauthorized) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
@@ -157,7 +154,7 @@ export async function apiFetch<T>(
     throw new ApiError(message, response.status, payload);
   }
 
-  return payload as T;
+  return unwrapPayload<T>(payload);
 }
 
 async function refreshAccessToken() {
@@ -165,15 +162,18 @@ async function refreshAccessToken() {
   if (!refreshToken) return false;
 
   try {
-    const response = await apiFetch<{ access_token: string }>(
+    const response = await apiFetch<{ access_token: string; refresh_token?: string }>(
       "/api/v1/auth/refresh",
       {
         method: "POST",
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        headers: { Authorization: `Bearer ${refreshToken}` },
         retryOnUnauthorized: false,
       },
     );
     storeAccessToken(response.access_token);
+    if (response.refresh_token) {
+      storeAuthTokens(response);
+    }
     return true;
   } catch {
     clearAuthTokens();
@@ -190,4 +190,47 @@ export function shouldUseMockFallback(error: unknown) {
     !hasAccessToken() ||
     (error instanceof ApiError && (error.status === 401 || error.status === 403))
   );
+}
+
+function unwrapPayload<T>(payload: unknown): T {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "data" in payload &&
+    "errors" in payload
+  ) {
+    const envelope = payload as ApiEnvelope<T>;
+    if (Array.isArray(envelope.errors) && envelope.errors.length > 0) {
+      throw new ApiError("QuranFlow API returned errors.", 200, payload);
+    }
+    return envelope.data as T;
+  }
+  return payload as T;
+}
+
+function errorMessage(payload: unknown, status: number) {
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (typeof payload !== "object" || payload === null) {
+    return `QuranFlow API request failed with ${status}`;
+  }
+
+  const obj = payload as Record<string, unknown>;
+  const error = obj.error;
+  if (typeof error === "object" && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    if (typeof errorObj.message === "string") return errorObj.message;
+    if (typeof errorObj.error_description === "string") {
+      return errorObj.error_description;
+    }
+  }
+
+  const detail = obj.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as Record<string, unknown>;
+    if (typeof first.msg === "string") return first.msg;
+  }
+  if (typeof obj.message === "string") return obj.message;
+
+  return `QuranFlow API request failed with ${status}`;
 }

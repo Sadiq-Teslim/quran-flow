@@ -25,44 +25,38 @@ export const AnalyticsSchema = z.object({
 export type Analytics = z.infer<typeof AnalyticsSchema>;
 
 const ApiOverviewSchema = z.object({
-  total_verses_read: z.number(),
-  total_reflections: z.number(),
-  current_streak_days: z.number(),
-  longest_streak_days: z.number(),
-  total_days_engaged: z.number(),
-});
-
-const ApiProgressListSchema = z.object({
-  items: z.array(z.object({ is_completed: z.boolean() })),
+  verses_this_month: z.number().optional(),
+  total_verses_read: z.number().optional(),
+  reflections_this_month: z.number().optional(),
+  total_reflections: z.number().optional(),
+  lessons_completed_this_month: z.number().optional(),
+  lessons_completed: z.number().optional(),
+  identity: z.string().optional(),
+  identity_earned_weeks_ago: z.number().optional(),
 });
 
 const ApiConsistencySchema = z.object({
   score: z.number(),
 });
 
-const ApiWeeklyConsistencySchema = z.array(
-  z.object({ week: z.string(), hits: z.number(), total: z.number() }),
-);
-
-const ApiVersesReadSchema = z.array(
-  z.object({ day: z.string(), verses: z.number() }),
-);
-
 export async function getProgressSummary(): Promise<ProgressSummary> {
   if (hasAccessToken()) {
     try {
-      const [overview, lessonProgress] = await Promise.all([
-        apiFetch<unknown>("/api/v1/analytics/overview", { auth: true }),
-        apiFetch<unknown>("/api/v1/education/me/progress", { auth: true }),
-      ]);
+      const overview = await apiFetch<unknown>("/api/v1/progress/summary", { auth: true });
       const parsedOverview = ApiOverviewSchema.parse(overview);
-      const parsedProgress = ApiProgressListSchema.parse(lessonProgress);
       return ProgressSummarySchema.parse({
-        versesThisMonth: parsedOverview.total_verses_read,
-        reflectionsThisMonth: parsedOverview.total_reflections,
-        lessonsCompletedThisMonth: parsedProgress.items.filter((item) => item.is_completed).length,
-        identity: mockDb.progressSummary.identity,
-        identityEarnedWeeksAgo: mockDb.progressSummary.identityEarnedWeeksAgo,
+        versesThisMonth:
+          parsedOverview.verses_this_month ?? parsedOverview.total_verses_read ?? 0,
+        reflectionsThisMonth:
+          parsedOverview.reflections_this_month ?? parsedOverview.total_reflections ?? 0,
+        lessonsCompletedThisMonth:
+          parsedOverview.lessons_completed_this_month ??
+          parsedOverview.lessons_completed ??
+          0,
+        identity: parsedOverview.identity ?? mockDb.progressSummary.identity,
+        identityEarnedWeeksAgo:
+          parsedOverview.identity_earned_weeks_ago ??
+          mockDb.progressSummary.identityEarnedWeeksAgo,
       });
     } catch (error) {
       if (!shouldUseMockFallback(error)) throw error;
@@ -86,20 +80,38 @@ export async function getAnalytics(): Promise<Analytics> {
   if (hasAccessToken()) {
     try {
       const [consistency, weekly, verses] = await Promise.all([
-        apiFetch<unknown>("/api/v1/habits/consistency-score?days=30", {
+        apiFetch<unknown>("/api/v1/progress/summary", {
           auth: true,
         }),
-        apiFetch<unknown>("/api/v1/analytics/weekly-consistency", {
+        apiFetch<unknown>("/api/v1/progress/activity-days?limit=30", {
           auth: true,
         }),
-        apiFetch<unknown>("/api/v1/analytics/verses-read", {
+        apiFetch<unknown>("/api/v1/progress/activity-days?limit=7", {
           auth: true,
         }),
       ]);
+      const days = z
+        .object({
+          days: z.array(z.record(z.string(), z.unknown())).optional(),
+          items: z.array(z.record(z.string(), z.unknown())).optional(),
+        })
+        .parse(weekly);
+      const activity = days.days ?? days.items ?? [];
       return AnalyticsSchema.parse({
-        consistencyScore: ApiConsistencySchema.parse(consistency).score,
-        weeklyConsistency: ApiWeeklyConsistencySchema.parse(weekly),
-        versesRead: ApiVersesReadSchema.parse(verses),
+        consistencyScore:
+          ApiConsistencySchema.partial().parse(consistency).score ??
+          Math.round((activity.filter((day) => day.read || day.completed).length / 30) * 100),
+        weeklyConsistency: [{ week: "Current", hits: activity.filter((day) => day.read || day.completed).length, total: Math.max(activity.length, 1) }],
+        versesRead: (z
+          .object({
+            days: z.array(z.record(z.string(), z.unknown())).optional(),
+            items: z.array(z.record(z.string(), z.unknown())).optional(),
+          })
+          .parse(verses).days ?? [])
+          .map((day) => ({
+            day: String(day.date ?? day.day ?? ""),
+            verses: Number(day.verses_read ?? day.verses ?? 0),
+          })),
       });
     } catch (error) {
       if (!shouldUseMockFallback(error)) throw error;
