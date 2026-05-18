@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { apiFetch, hasAccessToken, shouldUseMockFallback } from "@/lib/api/client";
-import { mockDb, persistDb } from "@/lib/mocks/db";
-import { simulateNetwork } from "@/lib/mocks/delay";
+import { apiFetch, hasAccessToken } from "@/lib/api/client";
 import {
   determineProfile,
   ProfileDeterminationSchema,
@@ -145,78 +143,59 @@ function mapApiUser(
   });
 }
 
-export async function getUser(): Promise<User> {
-  if (hasAccessToken()) {
-    try {
-      const [authUser, profile] = await Promise.all([
-        apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
-        apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
-      ]);
-      const user = ApiUserSchema.parse({
-        ...(typeof authUser === "object" && authUser ? authUser : {}),
-        ...(typeof profile === "object" && profile ? profile : {}),
-      });
-      const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
-      return mapApiUser(
-        user,
-        Boolean(
-          onboarding.completed ??
-            onboarding.onboarding_completed ??
-            onboarding.onboarded ??
-            user.onboarding_completed ??
-            user.onboarded,
-        ),
-      );
-    } catch (error) {
-      if (!shouldUseMockFallback(error)) throw error;
-    }
-  }
+export async function getUser(): Promise<User | null> {
+  if (!hasAccessToken()) return null;
 
-  await simulateNetwork(100, 250);
-  return UserSchema.parse(mockDb.user);
+  const [authUser, profile] = await Promise.all([
+    apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
+    apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
+  ]);
+  const user = ApiUserSchema.parse({
+    ...(typeof authUser === "object" && authUser ? authUser : {}),
+    ...(typeof profile === "object" && profile ? profile : {}),
+  });
+  const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
+  return mapApiUser(
+    user,
+    Boolean(
+      onboarding.completed ??
+        onboarding.onboarding_completed ??
+        onboarding.onboarded ??
+        user.onboarding_completed ??
+        user.onboarded,
+    ),
+  );
 }
 
 export async function completeOnboarding(payload: OnboardingPayload): Promise<User> {
   OnboardingPayloadSchema.parse(payload);
+  if (!hasAccessToken()) {
+    throw new Error("Create or sign in to your QuranFlow account before continuing.");
+  }
+
   const profile = await determineProfile(payload);
   saveProfileOverride(profile);
 
-  if (hasAccessToken()) {
-    try {
-      await apiFetch("/api/v1/onboarding/profile", {
-        auth: true,
-        method: "POST",
-        body: JSON.stringify({
-          user_type: profile.category,
-          reading_frequency: mapBackendReadingFrequency(payload.frequency),
-          preferred_reading_time: mapToBackendPreferredTime(payload.preferredTime),
-          motivation_type: mapBackendMotivation(payload.motivation),
-          struggles: payload.struggles,
-          locale: "en",
-          goals: [profile.title],
-        }),
-      });
-      return getUser();
-    } catch (error) {
-      if (!shouldUseMockFallback(error)) throw error;
-    }
+  await apiFetch("/api/v1/onboarding/profile", {
+    auth: true,
+    method: "POST",
+    body: JSON.stringify({
+      user_type: profile.category,
+      reading_frequency: mapBackendReadingFrequency(payload.frequency),
+      preferred_reading_time: mapToBackendPreferredTime(payload.preferredTime),
+      motivation_type: mapBackendMotivation(payload.motivation),
+      struggles: payload.struggles,
+      locale: "en",
+      goals: [profile.title],
+    }),
+  });
+
+  const user = await getUser();
+  if (!user) {
+    throw new Error("Your account could not be loaded after onboarding.");
   }
 
-  await simulateNetwork(250, 550);
-  mockDb.user = {
-    ...mockDb.user,
-    onboarded: true,
-    category: profile.category,
-    identity: profile.title,
-    preferredTime: derivePreferredTime(payload.preferredTime),
-  };
-  persistDb();
-  return UserSchema.parse(mockDb.user);
-}
-
-function derivePreferredTime(t: string): User["preferredTime"] {
-  const allowed: User["preferredTime"][] = ["fajr", "morning", "afternoon", "maghrib", "night"];
-  return (allowed.includes(t as User["preferredTime"]) ? t : "fajr") as User["preferredTime"];
+  return user;
 }
 
 function mapToBackendPreferredTime(t: string) {

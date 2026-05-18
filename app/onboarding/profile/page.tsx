@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 import { useCompleteOnboarding } from "@/hooks/use-complete-onboarding";
 import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
-import { determineProfileFromAnswers } from "@/lib/profile/determine-profile";
 import {
   determineProfile,
   type ProfileDetermination,
@@ -48,25 +47,38 @@ export default function ProfileStep() {
     draft.struggles,
   ]);
 
-  const localProfile = useMemo(
-    () => (answers ? determineProfileFromAnswers(answers) : null),
-    [answers],
-  );
   const answersKey = useMemo(() => JSON.stringify(answers), [answers]);
   const [remoteProfile, setRemoteProfile] = useState<{
     key: string;
     profile: ProfileDetermination;
   } | null>(null);
-  const visibleProfile =
-    remoteProfile?.key === answersKey ? remoteProfile.profile : localProfile;
+  const [profileError, setProfileError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+  const visibleProfile = remoteProfile?.key === answersKey ? remoteProfile.profile : null;
+  const visibleProfileError =
+    profileError?.key === answersKey ? profileError.message : null;
+  const isDeterminingProfile = Boolean(
+    answers && !visibleProfile && !visibleProfileError,
+  );
 
   useEffect(() => {
     if (!answers) return;
     let alive = true;
 
-    determineProfile(answers).then((nextProfile) => {
-      if (alive) setRemoteProfile({ key: answersKey, profile: nextProfile });
-    });
+    determineProfile(answers)
+      .then((nextProfile) => {
+        if (alive) setRemoteProfile({ key: answersKey, profile: nextProfile });
+      })
+      .catch(() => {
+        if (alive) {
+          setProfileError({
+            key: answersKey,
+            message: "We couldn't determine your profile yet.",
+          });
+        }
+      });
 
     return () => {
       alive = false;
@@ -114,6 +126,10 @@ export default function ProfileStep() {
       router.replace("/onboarding/motivation");
       return;
     }
+    if (!visibleProfile) {
+      toast.error(visibleProfileError ?? "Your profile is still being prepared.");
+      return;
+    }
 
     setIsFinishing(true);
     try {
@@ -155,8 +171,9 @@ export default function ProfileStep() {
               {visibleProfile?.title ?? "Personalized Reader"}
             </p>
             <p className="mt-3 font-serif text-base leading-relaxed text-muted-foreground">
-              {visibleProfile?.tagline ??
-                "We'll shape your path from your answers."}
+              {visibleProfileError ??
+                visibleProfile?.tagline ??
+                "We're shaping your path from your answers."}
             </p>
             {visibleProfile ? (
               <div className="mt-5 space-y-3 rounded-lg border border-border/70 bg-background/60 p-4">
@@ -182,10 +199,20 @@ export default function ProfileStep() {
         <Button
           size="xl"
           className="w-full"
-          disabled={mutation.isPending || isFinishing || !gate.canContinue}
+          disabled={
+            mutation.isPending ||
+            isFinishing ||
+            isDeterminingProfile ||
+            !gate.canContinue ||
+            !visibleProfile
+          }
           onClick={handleStart}
         >
-          {mutation.isPending || isFinishing ? "Setting up..." : "Begin my journey"}
+          {mutation.isPending || isFinishing
+            ? "Setting up..."
+            : isDeterminingProfile
+              ? "Preparing profile..."
+              : "Begin my journey"}
           <ArrowRight className="size-4" aria-hidden />
         </Button>
       </div>

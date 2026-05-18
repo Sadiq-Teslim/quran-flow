@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  determineProfileFromAnswers,
   ProfileAnswersSchema,
   ProfileCategorySchema,
   type ProfileAnswers,
@@ -31,19 +30,15 @@ export async function determineProfile(
 ): Promise<ProfileDetermination> {
   const payload = ProfileAnswersSchema.parse(input);
 
-  try {
-    const response = await fetch("/api/profile/determine", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  const response = await fetch("/api/profile/determine", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-    if (!response.ok) throw new Error(`Profile API failed with ${response.status}`);
-    return ProfileDeterminationSchema.parse(await response.json());
-  } catch {
-    return ProfileDeterminationSchema.parse(determineProfileFromAnswers(payload));
-  }
+  if (!response.ok) throw new Error(`Profile API failed with ${response.status}`);
+  return ProfileDeterminationSchema.parse(await response.json());
 }

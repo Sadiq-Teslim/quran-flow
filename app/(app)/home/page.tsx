@@ -40,7 +40,7 @@ export default function HomePage() {
           <Skeleton className="h-7 w-44" />
         ) : (
           <h1 className="font-serif text-3xl leading-tight tracking-tight">
-            {user.data?.isAnonymous
+            {!user.data || user.data.isAnonymous
               ? `${timeOfDayGreeting()}.`
               : `${timeOfDayGreeting()}, ${user.data?.name}.`}
           </h1>

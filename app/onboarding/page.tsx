@@ -5,8 +5,11 @@ import { ArrowRight } from "lucide-react";
 import { QuranFlowMark } from "@/components/brand/quranflow-mark";
 import { StepShell } from "@/components/onboarding/step-shell";
 import { Button } from "@/components/ui/button";
+import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 
 export default function OnboardingWelcome() {
+  const resetDraft = useOnboardingDraft((state) => state.reset);
+
   return (
     <StepShell step={1} total={7}>
       <div className="flex flex-1 flex-col">
@@ -35,7 +38,7 @@ export default function OnboardingWelcome() {
           </p>
         </div>
         <Button asChild size="xl" className="w-full">
-          <Link href="/onboarding/account">
+          <Link href="/onboarding/account" onClick={resetDraft}>
             Begin
             <ArrowRight className="size-4" aria-hidden />
           </Link>

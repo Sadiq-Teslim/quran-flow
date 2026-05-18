@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, LockKeyhole } from "lucide-react";
@@ -25,6 +25,7 @@ export default function AccountStep() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const hasRealAccount = Boolean(user.data && !user.data.isAnonymous);
 
   const createAccount = useMutation({
     mutationFn: (payload: SignupPayload) => createOnboardingAccount(payload),
@@ -34,13 +35,6 @@ export default function AccountStep() {
       router.push("/onboarding/frequency");
     },
   });
-
-  useEffect(() => {
-    if (user.data && !user.data.isAnonymous) {
-      setDraft({ accountCreated: true });
-      router.replace("/onboarding/frequency");
-    }
-  }, [router, setDraft, user.data]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,51 +82,79 @@ export default function AccountStep() {
           </div>
 
           <Card className="p-5">
-            <div className="mb-4 flex items-start gap-3">
-              <LockKeyhole className="mt-0.5 size-5 text-accent" aria-hidden />
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                We&apos;ll save your journey before personalizing your daily plan.
-              </p>
-            </div>
-            <form className="space-y-3" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="First name"
-                  autoComplete="given-name"
-                  required
-                />
-                <Input
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  placeholder="Last name"
-                  autoComplete="family-name"
-                  required
-                />
+            {hasRealAccount ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <LockKeyhole className="mt-0.5 size-5 text-accent" aria-hidden />
+                  <div>
+                    <p className="text-sm font-medium">Your account is ready.</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      You&apos;re signed in as {user.data?.email}. Continue to build
+                      your personalized plan.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  size="xl"
+                  onClick={() => {
+                    setDraft({ accountCreated: true });
+                    router.push("/onboarding/frequency");
+                  }}
+                >
+                  Continue
+                  <ArrowRight className="size-4" aria-hidden />
+                </Button>
               </div>
-              <Input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email"
-                type="email"
-                autoComplete="email"
-                required
-              />
-              <Input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Password, at least 8 characters"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-              />
-              <Button className="w-full" disabled={disabled} size="xl" type="submit">
-                {createAccount.isPending ? "Creating account..." : "Join QuranFlow"}
-                <ArrowRight className="size-4" aria-hidden />
-              </Button>
-            </form>
+            ) : (
+              <>
+                <div className="mb-4 flex items-start gap-3">
+                  <LockKeyhole className="mt-0.5 size-5 text-accent" aria-hidden />
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    We&apos;ll save your journey before personalizing your daily plan.
+                  </p>
+                </div>
+                <form className="space-y-3" onSubmit={handleSubmit}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      value={firstName}
+                      onChange={(event) => setFirstName(event.target.value)}
+                      placeholder="First name"
+                      autoComplete="given-name"
+                      required
+                    />
+                    <Input
+                      value={lastName}
+                      onChange={(event) => setLastName(event.target.value)}
+                      placeholder="Last name"
+                      autoComplete="family-name"
+                      required
+                    />
+                  </div>
+                  <Input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                  <Input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Password, at least 8 characters"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                  <Button className="w-full" disabled={disabled} size="xl" type="submit">
+                    {createAccount.isPending ? "Creating account..." : "Join QuranFlow"}
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Button>
+                </form>
+              </>
+            )}
           </Card>
         </div>
       </div>

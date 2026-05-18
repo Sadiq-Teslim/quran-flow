@@ -7,26 +7,24 @@ import { useUser } from "@/hooks/use-user";
 
 export function useOnboardingAccountGate() {
   const router = useRouter();
-  const accountCreated = useOnboardingDraft((state) => state.accountCreated);
   const hasHydrated = useOnboardingDraft((state) => state.hasHydrated);
   const setDraft = useOnboardingDraft((state) => state.set);
   const user = useUser();
   const hasRealAccount = Boolean(user.data && !user.data.isAnonymous);
-  const canContinue = Boolean(accountCreated || hasRealAccount);
 
   useEffect(() => {
-    if (hasRealAccount && !accountCreated) {
+    if (hasRealAccount) {
       setDraft({ accountCreated: true });
     }
-  }, [accountCreated, hasRealAccount, setDraft]);
+  }, [hasRealAccount, setDraft]);
 
   useEffect(() => {
     if (!hasHydrated || user.isLoading) return;
-    if (!canContinue) router.replace("/onboarding/account");
-  }, [canContinue, hasHydrated, router, user.isLoading]);
+    if (!hasRealAccount) router.replace("/onboarding/account");
+  }, [hasHydrated, hasRealAccount, router, user.isLoading]);
 
   return {
-    canContinue,
+    canContinue: hasRealAccount,
     isCheckingAccount: !hasHydrated || user.isLoading,
   };
 }
