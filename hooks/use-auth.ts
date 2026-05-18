@@ -53,10 +53,7 @@ export function useAuth() {
   });
 
   const signupMutation = useMutation({
-    mutationFn: async (payload: SignupPayload) => {
-      await signup(payload);
-      return login({ email: payload.email, password: payload.password });
-    },
+    mutationFn: (payload: SignupPayload) => signup(payload),
     onSuccess: refreshAuthedQueries,
   });
 

@@ -1,6 +1,16 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_QURANFLOW_API_BASE_URL?.replace(/\/$/, "") ??
-  "/api/quranflow";
+const DEFAULT_API_BASE_URL = "/api/quranflow";
+const OLD_API_BASE_URL = "https://quran-flow.onrender.com";
+
+function normalizeApiBaseUrl(value: string | undefined) {
+  const baseUrl = value?.replace(/\/$/, "") || DEFAULT_API_BASE_URL;
+  return baseUrl === OLD_API_BASE_URL
+    ? "https://quran-flow-1.onrender.com"
+    : baseUrl;
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.NEXT_PUBLIC_QURANFLOW_API_BASE_URL,
+);
 const API_TIMEOUT_MS = Number(
   process.env.NEXT_PUBLIC_QURANFLOW_API_TIMEOUT_MS ?? 10000,
 );

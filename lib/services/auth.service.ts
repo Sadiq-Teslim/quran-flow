@@ -22,13 +22,6 @@ export const LoginPayloadSchema = z.object({
 });
 export type LoginPayload = z.infer<typeof LoginPayloadSchema>;
 
-const SignupResponseSchema = z.object({
-  user_id: z.string().optional(),
-  id: z.string().optional(),
-  email: z.string().email(),
-  message: z.string().default("User created successfully"),
-});
-
 const TokenResponseSchema = z.object({
   access_token: z.string(),
   refresh_token: z.string().optional(),
@@ -44,7 +37,7 @@ type Enable2FAResponse = {
 
 export async function signup(payload: SignupPayload) {
   const parsed = SignupPayloadSchema.parse(payload);
-  return SignupResponseSchema.parse(
+  const tokens = TokenResponseSchema.parse(
     await apiFetch<unknown>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify({
@@ -55,13 +48,13 @@ export async function signup(payload: SignupPayload) {
       }),
     }),
   );
+  storeAuthTokens(tokens);
+  return tokens;
 }
 
 export async function createOnboardingAccount(payload: SignupPayload) {
   const parsed = SignupPayloadSchema.parse(payload);
-
-  await signup(parsed);
-  return login({ email: parsed.email, password: parsed.password });
+  return signup(parsed);
 }
 
 export async function login(payload: LoginPayload) {
