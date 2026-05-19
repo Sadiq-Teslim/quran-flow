@@ -37,6 +37,7 @@ import {
   type AudioLanguage,
   useAudioLanguage,
 } from "@/lib/audio/preferences";
+import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
@@ -368,6 +369,12 @@ function AuthPanel({
         toast.success("Account created and connected.");
       }
     } catch (error) {
+      if (mode === "signup" && error instanceof ApiError && error.status === 409) {
+        setMode("login");
+        toast.error("That email already has an account. Sign in instead.");
+        return;
+      }
+
       toast.error(error instanceof Error ? error.message : "Authentication failed.");
     }
   }

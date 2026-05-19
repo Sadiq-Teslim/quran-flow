@@ -11,10 +11,18 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 import { useUser } from "@/hooks/use-user";
-import {
-  createOnboardingAccount,
-  type SignupPayload,
-} from "@/lib/services/auth.service";
+import { ApiError } from "@/lib/api/client";
+import { createOnboardingAccount, login } from "@/lib/services/auth.service";
+
+type AccountMode = "signup" | "login";
+
+type AccountPayload = {
+  mode: AccountMode;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+};
 
 export default function AccountStep() {
   const router = useRouter();
@@ -25,10 +33,20 @@ export default function AccountStep() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<AccountMode>("signup");
   const hasRealAccount = Boolean(user.data && !user.data.isAnonymous);
 
   const createAccount = useMutation({
-    mutationFn: (payload: SignupPayload) => createOnboardingAccount(payload),
+    mutationFn: (payload: AccountPayload) =>
+      payload.mode === "signup"
+        ? createOnboardingAccount({
+            email: payload.email,
+            password: payload.password,
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            userType: "beginner",
+          })
+        : login({ email: payload.email, password: payload.password }),
     onSuccess: async () => {
       setDraft({ accountCreated: true });
       await queryClient.invalidateQueries({ queryKey: ["user"] });
@@ -41,13 +59,19 @@ export default function AccountStep() {
 
     try {
       await createAccount.mutateAsync({
+        mode,
         email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        userType: "beginner",
       });
     } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setMode("login");
+        toast.error("That email already has an account. Sign in to continue.");
+        return;
+      }
+
       toast.error(
         error instanceof Error
           ? error.message
@@ -59,10 +83,10 @@ export default function AccountStep() {
   const disabled =
     createAccount.isPending ||
     user.isLoading ||
-    !firstName.trim() ||
-    !lastName.trim() ||
+    (mode === "signup" && (!firstName.trim() || !lastName.trim())) ||
     !email.trim() ||
     password.length < 8;
+  const isSignup = mode === "signup";
 
   return (
     <StepShell step={2} total={7}>
@@ -73,11 +97,12 @@ export default function AccountStep() {
               Step 2 of 7
             </p>
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">
-              Create your QuranFlow account.
+              {isSignup ? "Create your QuranFlow account." : "Sign in to QuranFlow."}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Your reading plan, reflections, and progress should belong to you
-              from the start.
+              {isSignup
+                ? "Your reading plan, reflections, and progress should belong to you from the start."
+                : "Continue with the account that already holds your journey."}
             </p>
           </div>
 
@@ -111,26 +136,30 @@ export default function AccountStep() {
                 <div className="mb-4 flex items-start gap-3">
                   <LockKeyhole className="mt-0.5 size-5 text-accent" aria-hidden />
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    We&apos;ll save your journey before personalizing your daily plan.
+                    {isSignup
+                      ? "We'll save your journey before personalizing your daily plan."
+                      : "Use your existing account to continue onboarding."}
                   </p>
                 </div>
                 <form className="space-y-3" onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      value={firstName}
-                      onChange={(event) => setFirstName(event.target.value)}
-                      placeholder="First name"
-                      autoComplete="given-name"
-                      required
-                    />
-                    <Input
-                      value={lastName}
-                      onChange={(event) => setLastName(event.target.value)}
-                      placeholder="Last name"
-                      autoComplete="family-name"
-                      required
-                    />
-                  </div>
+                  {isSignup ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        value={firstName}
+                        onChange={(event) => setFirstName(event.target.value)}
+                        placeholder="First name"
+                        autoComplete="given-name"
+                        required
+                      />
+                      <Input
+                        value={lastName}
+                        onChange={(event) => setLastName(event.target.value)}
+                        placeholder="Last name"
+                        autoComplete="family-name"
+                        required
+                      />
+                    </div>
+                  ) : null}
                   <Input
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
@@ -149,8 +178,26 @@ export default function AccountStep() {
                     required
                   />
                   <Button className="w-full" disabled={disabled} size="xl" type="submit">
-                    {createAccount.isPending ? "Creating account..." : "Join QuranFlow"}
+                    {createAccount.isPending
+                      ? isSignup
+                        ? "Creating account..."
+                        : "Signing in..."
+                      : isSignup
+                        ? "Join QuranFlow"
+                        : "Sign in and continue"}
                     <ArrowRight className="size-4" aria-hidden />
+                  </Button>
+                  <Button
+                    className="w-full"
+                    disabled={createAccount.isPending}
+                    onClick={() => setMode(isSignup ? "login" : "signup")}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {isSignup
+                      ? "Already have an account? Sign in"
+                      : "Need a new account? Create one"}
                   </Button>
                 </form>
               </>
