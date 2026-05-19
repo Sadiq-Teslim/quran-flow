@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { apiFetch, hasAccessToken } from "@/lib/api/client";
-import {
-  determineProfile,
-  ProfileDeterminationSchema,
-  type ProfileDetermination,
-} from "@/lib/services/profile.service";
 
-const PROFILE_OVERRIDE_KEY = "quranflow.profile_override";
+const UserCategorySchema = z.enum([
+    "busy_professional",
+    "inconsistent_reader",
+    "beginner",
+    "deep_learner",
+    "new_muslim",
+]);
+type UserCategory = z.infer<typeof UserCategorySchema>;
 
 export const UserSchema = z.object({
   id: z.string(),
@@ -16,13 +18,7 @@ export const UserSchema = z.object({
   identityEarnedAt: z.string(),
   language: z.string(),
   preferredTime: z.enum(["fajr", "morning", "afternoon", "maghrib", "night"]),
-  category: z.enum([
-    "busy_professional",
-    "inconsistent_reader",
-    "beginner",
-    "deep_learner",
-    "new_muslim",
-  ]),
+  category: UserCategorySchema,
   onboarded: z.boolean(),
   isAnonymous: z.boolean().default(false),
 });
@@ -33,7 +29,6 @@ export const OnboardingPayloadSchema = z.object({
   struggles: z.array(z.string()),
   preferredTime: z.string(),
   motivation: z.string(),
-  category: z.string().optional(),
 });
 export type OnboardingPayload = z.infer<typeof OnboardingPayloadSchema>;
 
@@ -60,8 +55,27 @@ const ApiOnboardingStatusSchema = z.object({
   onboarded: z.boolean().optional(),
 });
 
-function identityFromUserType(userType: string) {
-  const labels: Record<string, string> = {
+const ApiProfileSchema = z.object({
+  category: z.string().nullable().optional(),
+  reading_frequency: z.string().nullable().optional(),
+  struggles: z.array(z.string()).nullable().optional(),
+  preferred_reading_time: z.string().nullable().optional(),
+  motivation_type: z.string().nullable().optional(),
+  user_type: z.string().nullable().optional(),
+  locale: z.string().nullable().optional(),
+  goals: z.array(z.string()).nullable().optional(),
+});
+
+const ApiProfileResponseSchema = z.object({
+  profile: ApiProfileSchema.nullable().optional(),
+});
+
+const ApiOnboardingResponseSchema = z.object({
+  profile: ApiProfileSchema,
+});
+
+function identityFromUserType(userType: UserCategory) {
+  const labels: Record<UserCategory, string> = {
     busy_professional: "Steady Reader",
     inconsistent_reader: "Returning Reader",
     beginner: "Growing Reader",
@@ -71,62 +85,59 @@ function identityFromUserType(userType: string) {
   return labels[userType] ?? "Quran Companion";
 }
 
-function getProfileOverride(): ProfileDetermination | null {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = localStorage.getItem(PROFILE_OVERRIDE_KEY);
-    if (!raw) return null;
-    return ProfileDeterminationSchema.parse(JSON.parse(raw));
-  } catch {
-    localStorage.removeItem(PROFILE_OVERRIDE_KEY);
-    return null;
+export function clearProfileOverride() {
+  // Clear legacy local profile determinations from older frontend builds.
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("quranflow.profile_override");
   }
 }
 
-function saveProfileOverride(profile: ProfileDetermination) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(PROFILE_OVERRIDE_KEY, JSON.stringify(profile));
-}
-
-export function clearProfileOverride() {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(PROFILE_OVERRIDE_KEY);
-}
-
-function displayNameFromUser(
-  user: z.infer<typeof ApiUserSchema>,
-  profile: ProfileDetermination | null,
-) {
+function displayNameFromUser(user: z.infer<typeof ApiUserSchema>) {
   if (user.first_name) return user.first_name;
   if (user.username) return user.username;
-  if (user.anonymous_mode) return profile?.title ?? "Quran Companion";
+  if (user.anonymous_mode) return "Quran Companion";
 
   const emailName = user.email.split("@")[0];
   if (/^(guest|anonymous|anon)[-_]?\w*/i.test(emailName)) {
-    return profile?.title ?? "Quran Companion";
+    return "Quran Companion";
   }
 
-  return emailName || profile?.title || "Quran Companion";
+  return emailName || "Quran Companion";
+}
+
+function normalizeCategory(value: string | null | undefined): UserCategory {
+  const parsed = UserCategorySchema.safeParse(value);
+  return parsed.success ? parsed.data : "inconsistent_reader";
+}
+
+function profileIsOnboarded(
+  profile: z.infer<typeof ApiProfileSchema> | null | undefined,
+) {
+  if (!profile) return false;
+  return Boolean(
+    profile.reading_frequency ||
+      profile.preferred_reading_time ||
+      profile.motivation_type ||
+      profile.user_type ||
+      profile.category,
+  );
 }
 
 function mapApiUser(
   user: z.infer<typeof ApiUserSchema>,
   onboarded: boolean,
+  profile: z.infer<typeof ApiProfileSchema> | null | undefined,
 ): User {
-  const profileOverride = getProfileOverride();
-  const rawCategory = user.category ?? user.user_type ?? "beginner";
-  const category = profileOverride?.category
-    ? profileOverride.category
-    : UserSchema.shape.category.safeParse(rawCategory).success
-      ? rawCategory
-      : "beginner";
-  const identity = profileOverride?.title
-    ? profileOverride.title
-    : identityFromUserType(category);
-  const name = displayNameFromUser(user, profileOverride);
+  const category = normalizeCategory(
+    profile?.category ?? user.category ?? user.user_type,
+  );
+  const identity = identityFromUserType(category);
+  const name = displayNameFromUser(user);
   const preferredTime = mapApiPreferredTime(
-    user.preferred_reading_time ?? user.reading_time ?? "fajr",
+    profile?.preferred_reading_time ??
+      user.preferred_reading_time ??
+      user.reading_time ??
+      "fajr",
   );
 
   return UserSchema.parse({
@@ -150,9 +161,14 @@ export async function getUser(): Promise<User | null> {
     apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
     apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
   ]);
+  const profileData = ApiProfileResponseSchema.safeParse(profile).success
+    ? ApiProfileResponseSchema.parse(profile).profile
+    : ApiProfileSchema.safeParse(profile).success
+      ? ApiProfileSchema.parse(profile)
+      : null;
   const user = ApiUserSchema.parse({
     ...(typeof authUser === "object" && authUser ? authUser : {}),
-    ...(typeof profile === "object" && profile ? profile : {}),
+    ...(profileData ?? {}),
   });
   const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
   return mapApiUser(
@@ -162,8 +178,10 @@ export async function getUser(): Promise<User | null> {
         onboarding.onboarding_completed ??
         onboarding.onboarded ??
         user.onboarding_completed ??
-        user.onboarded,
+        user.onboarded ??
+        profileIsOnboarded(profileData),
     ),
+    profileData,
   );
 }
 
@@ -173,29 +191,30 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<Us
     throw new Error("Create or sign in to your QuranFlow account before continuing.");
   }
 
-  const profile = await determineProfile(payload);
-  saveProfileOverride(profile);
-
-  await apiFetch("/api/v1/onboarding/profile", {
+  const response = ApiOnboardingResponseSchema.parse(await apiFetch("/api/v1/onboarding/profile", {
     auth: true,
     method: "POST",
     body: JSON.stringify({
-      user_type: profile.category,
       reading_frequency: mapBackendReadingFrequency(payload.frequency),
       preferred_reading_time: mapToBackendPreferredTime(payload.preferredTime),
       motivation_type: mapBackendMotivation(payload.motivation),
       struggles: payload.struggles,
       locale: "en",
-      goals: [profile.title],
+      goals: [],
     }),
-  });
+  }));
 
   const user = await getUser();
   if (!user) {
     throw new Error("Your account could not be loaded after onboarding.");
   }
 
-  return user;
+  return UserSchema.parse({
+    ...user,
+    category: normalizeCategory(response.profile.category),
+    identity: identityFromUserType(normalizeCategory(response.profile.category)),
+    onboarded: true,
+  });
 }
 
 function mapToBackendPreferredTime(t: string) {

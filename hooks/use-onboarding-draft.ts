@@ -8,7 +8,6 @@ export type OnboardingDraft = {
   struggles?: string[];
   preferredTime?: string;
   motivation?: string;
-  category?: string;
 };
 
 type Store = OnboardingDraft & {
@@ -30,7 +29,6 @@ export const useOnboardingDraft = create<Store>()(
           struggles: undefined,
           preferredTime: undefined,
           motivation: undefined,
-          category: undefined,
         }),
       setHasHydrated: (value) => setState({ hasHydrated: value }),
     }),
@@ -42,14 +40,12 @@ export const useOnboardingDraft = create<Store>()(
         struggles,
         preferredTime,
         motivation,
-        category,
       }) => ({
         accountCreated,
         frequency,
         struggles,
         preferredTime,
         motivation,
-        category,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

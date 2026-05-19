@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { StepShell } from "@/components/onboarding/step-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useOnboardingDraft } from "@/hooks/use-onboarding-draft";
 import { useCompleteOnboarding } from "@/hooks/use-complete-onboarding";
 import { useOnboardingAccountGate } from "@/hooks/use-onboarding-account-gate";
-import {
-  determineProfile,
-  type ProfileDetermination,
-} from "@/lib/services/profile.service";
 
 export default function ProfileStep() {
   const router = useRouter();
@@ -21,69 +18,7 @@ export default function ProfileStep() {
   const mutation = useCompleteOnboarding();
   const gate = useOnboardingAccountGate();
   const [isFinishing, setIsFinishing] = useState(false);
-
-  const answers = useMemo(() => {
-    if (
-      !draft.frequency ||
-      !draft.struggles?.length ||
-      !draft.preferredTime ||
-      !draft.motivation
-    ) {
-      return null;
-    }
-
-    return {
-      frequency: draft.frequency,
-      struggles: draft.struggles,
-      preferredTime: draft.preferredTime,
-      motivation: draft.motivation,
-      category: draft.category,
-    };
-  }, [
-    draft.category,
-    draft.frequency,
-    draft.motivation,
-    draft.preferredTime,
-    draft.struggles,
-  ]);
-
-  const answersKey = useMemo(() => JSON.stringify(answers), [answers]);
-  const [remoteProfile, setRemoteProfile] = useState<{
-    key: string;
-    profile: ProfileDetermination;
-  } | null>(null);
-  const [profileError, setProfileError] = useState<{
-    key: string;
-    message: string;
-  } | null>(null);
-  const visibleProfile = remoteProfile?.key === answersKey ? remoteProfile.profile : null;
-  const visibleProfileError =
-    profileError?.key === answersKey ? profileError.message : null;
-  const isDeterminingProfile = Boolean(
-    answers && !visibleProfile && !visibleProfileError,
-  );
-
-  useEffect(() => {
-    if (!answers) return;
-    let alive = true;
-
-    determineProfile(answers)
-      .then((nextProfile) => {
-        if (alive) setRemoteProfile({ key: answersKey, profile: nextProfile });
-      })
-      .catch(() => {
-        if (alive) {
-          setProfileError({
-            key: answersKey,
-            message: "We couldn't determine your profile yet.",
-          });
-        }
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [answers, answersKey]);
+  const isSaving = mutation.isPending || isFinishing;
 
   useEffect(() => {
     if (isFinishing) return;
@@ -126,11 +61,6 @@ export default function ProfileStep() {
       router.replace("/onboarding/motivation");
       return;
     }
-    if (!visibleProfile) {
-      toast.error(visibleProfileError ?? "Your profile is still being prepared.");
-      return;
-    }
-
     setIsFinishing(true);
     try {
       await mutation.mutateAsync({
@@ -138,7 +68,6 @@ export default function ProfileStep() {
         struggles: draft.struggles ?? [],
         preferredTime: draft.preferredTime,
         motivation: draft.motivation,
-        category: visibleProfile?.category,
       });
       router.replace("/home");
       draft.reset();
@@ -154,65 +83,54 @@ export default function ProfileStep() {
         <div className="flex-1 space-y-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Your path
+              Final step
             </p>
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight">
-              We&apos;ll walk with you as a
+              Let&apos;s build your path.
             </h1>
           </div>
           <Card className="bg-gradient-to-b from-accent/[0.08] to-transparent p-6">
-            <div className="flex items-center gap-2 text-accent">
-              <Sparkles className="size-4" aria-hidden />
-              <span className="text-xs font-semibold uppercase tracking-wider">
-                Your identity
-              </span>
-            </div>
-            <p className="mt-3 font-serif text-3xl leading-tight">
-              {visibleProfile?.title ?? "Personalized Reader"}
-            </p>
-            <p className="mt-3 font-serif text-base leading-relaxed text-muted-foreground">
-              {visibleProfileError ??
-                visibleProfile?.tagline ??
-                "We're shaping your path from your answers."}
-            </p>
-            {visibleProfile ? (
-              <div className="mt-5 space-y-3 rounded-lg border border-border/70 bg-background/60 p-4">
-                <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wider">
-                  <span className="text-muted-foreground">Profile match</span>
-                  <span className="text-foreground">
-                    {visibleProfile.confidence}% {visibleProfile.confidenceLabel}
+            {isSaving ? (
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-9 w-3/4" />
+                <Skeleton className="h-5 w-full" />
+                <div className="space-y-2 rounded-lg border border-border/70 bg-background/60 p-4">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-accent">
+                  <Sparkles className="size-4" aria-hidden />
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    Backend-personalized
                   </span>
                 </div>
-                <ul className="space-y-2 text-sm leading-relaxed text-muted-foreground">
-                  {visibleProfile.reasons.slice(0, 3).map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+                <p className="mt-3 font-serif text-2xl leading-tight">
+                  QuranFlow will shape your plan from your answers.
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  Your profile, reading target, and daily rhythm will be saved to
+                  your account.
+                </p>
+              </>
+            )}
           </Card>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            This isn&apos;t a label - it&apos;s a starting shape. Your path will
-            adapt as you read, reflect, and return.
+            Your profile is generated by the backend and can adapt as you read,
+            reflect, and return.
           </p>
         </div>
         <Button
           size="xl"
           className="w-full"
-          disabled={
-            mutation.isPending ||
-            isFinishing ||
-            isDeterminingProfile ||
-            !gate.canContinue ||
-            !visibleProfile
-          }
+          disabled={isSaving || !gate.canContinue}
           onClick={handleStart}
         >
-          {mutation.isPending || isFinishing
-            ? "Setting up..."
-            : isDeterminingProfile
-              ? "Preparing profile..."
-              : "Begin my journey"}
+          {isSaving ? "Setting up..." : "Begin my journey"}
           <ArrowRight className="size-4" aria-hidden />
         </Button>
       </div>
