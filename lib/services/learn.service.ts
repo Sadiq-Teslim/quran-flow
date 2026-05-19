@@ -145,6 +145,10 @@ function buildLearnPath(lessons: Lesson[], completedLessonIds: string[]): LearnP
 }
 
 export async function getLearnPath(): Promise<LearnPath> {
+  if (!hasAccessToken()) {
+    return buildLearnPath(mockDb.lessons, mockDb.completedLessonIds);
+  }
+
   try {
     const feed = z
       .object({
@@ -152,7 +156,7 @@ export async function getLearnPath(): Promise<LearnPath> {
         modules: z.array(ApiModuleSchema).optional(),
         items: z.array(ApiModuleSchema).optional(),
       })
-      .parse(await apiFetch<unknown>("/api/v1/education/feed", { auth: hasAccessToken() }));
+      .parse(await apiFetch<unknown>("/api/v1/education/feed", { auth: true }));
     const modules = feed.lessons ?? feed.modules ?? feed.items ?? [];
     if (modules.length > 0) {
       return buildLearnPath(

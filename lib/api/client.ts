@@ -123,6 +123,10 @@ export async function apiFetch<T>(
   }
 
   const token = getAccessToken();
+  if (auth && !token) {
+    clearTimeout(timeoutId);
+    throw new ApiError("Sign in to continue.", 401, null);
+  }
   if (auth && token) {
     requestHeaders.set("Authorization", `Bearer ${token}`);
   }
@@ -160,6 +164,9 @@ export async function apiFetch<T>(
         });
       }
     }
+    if (auth && response.status === 401) {
+      clearAuthTokens();
+    }
 
     throw new ApiError(message, response.status, payload);
   }
@@ -169,7 +176,10 @@ export async function apiFetch<T>(
 
 async function refreshAccessToken() {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (!refreshToken) {
+    clearAuthTokens();
+    return false;
+  }
 
   try {
     const response = await apiFetch<{ access_token: string; refresh_token?: string }>(

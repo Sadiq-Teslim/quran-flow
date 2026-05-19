@@ -8,7 +8,7 @@ import {
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { hasAccessToken } from "@/lib/api/client";
+import { ApiError, hasAccessToken } from "@/lib/api/client";
 import { startAnonymousSession } from "@/lib/services/auth.service";
 
 function BackendSessionBootstrap() {
@@ -37,7 +37,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 1000 * 60,
             refetchOnWindowFocus: false,
-            retry: 1,
+            retry: (failureCount, error) => {
+              if (error instanceof ApiError && error.status === 401) return false;
+              return failureCount < 1;
+            },
           },
         },
       }),

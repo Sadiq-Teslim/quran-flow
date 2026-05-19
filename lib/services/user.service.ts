@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { apiFetch, hasAccessToken } from "@/lib/api/client";
+import {
+  ApiError,
+  apiFetch,
+  clearAuthTokens,
+  hasAccessToken,
+} from "@/lib/api/client";
 
 const UserCategorySchema = z.enum([
     "busy_professional",
@@ -157,32 +162,40 @@ function mapApiUser(
 export async function getUser(): Promise<User | null> {
   if (!hasAccessToken()) return null;
 
-  const [authUser, profile] = await Promise.all([
-    apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
-    apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
-  ]);
-  const profileData = ApiProfileResponseSchema.safeParse(profile).success
-    ? ApiProfileResponseSchema.parse(profile).profile
-    : ApiProfileSchema.safeParse(profile).success
-      ? ApiProfileSchema.parse(profile)
-      : null;
-  const user = ApiUserSchema.parse({
-    ...(typeof authUser === "object" && authUser ? authUser : {}),
-    ...(profileData ?? {}),
-  });
-  const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
-  return mapApiUser(
-    user,
-    Boolean(
-      onboarding.completed ??
-        onboarding.onboarding_completed ??
-        onboarding.onboarded ??
-        user.onboarding_completed ??
-        user.onboarded ??
-        profileIsOnboarded(profileData),
-    ),
-    profileData,
-  );
+  try {
+    const [authUser, profile] = await Promise.all([
+      apiFetch<unknown>("/api/v1/auth/me", { auth: true }),
+      apiFetch<unknown>("/api/v1/me/profile", { auth: true }).catch(() => null),
+    ]);
+    const profileData = ApiProfileResponseSchema.safeParse(profile).success
+      ? ApiProfileResponseSchema.parse(profile).profile
+      : ApiProfileSchema.safeParse(profile).success
+        ? ApiProfileSchema.parse(profile)
+        : null;
+    const user = ApiUserSchema.parse({
+      ...(typeof authUser === "object" && authUser ? authUser : {}),
+      ...(profileData ?? {}),
+    });
+    const onboarding = ApiOnboardingStatusSchema.parse(profile ?? {});
+    return mapApiUser(
+      user,
+      Boolean(
+        onboarding.completed ??
+          onboarding.onboarding_completed ??
+          onboarding.onboarded ??
+          user.onboarding_completed ??
+          user.onboarded ??
+          profileIsOnboarded(profileData),
+      ),
+      profileData,
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      clearAuthTokens();
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function completeOnboarding(payload: OnboardingPayload): Promise<User> {
