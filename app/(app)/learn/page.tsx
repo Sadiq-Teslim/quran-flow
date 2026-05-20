@@ -26,6 +26,14 @@ export default function LearnPage() {
                   {stage.completedCount}/{stage.moduleCount}
                 </p>
                 <p className="mt-1 font-serif leading-tight">{stage.title}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                  {stage.description}
+                </p>
+                {stage.trustLabel ? (
+                  <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-primary">
+                    {stage.trustLabel.replace("_", " ")}
+                  </p>
+                ) : null}
               </div>
             ))}
           </section>

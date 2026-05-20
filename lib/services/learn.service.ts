@@ -36,6 +36,19 @@ export const EducationStageSchema = z.object({
   description: z.string(),
   moduleCount: z.number(),
   completedCount: z.number(),
+  trustLabel: z.string().nullable().optional(),
+  quranFoundation: z
+    .object({
+      verseKey: z.string(),
+      language: z.string(),
+      translationId: z.number(),
+      tafsirId: z.number(),
+      sourceEndpoint: z.string(),
+      translationEndpoint: z.string(),
+      tafsirEndpoint: z.string(),
+    })
+    .nullable()
+    .optional(),
 });
 export type EducationStage = z.infer<typeof EducationStageSchema>;
 
@@ -63,6 +76,19 @@ const ApiStagesSchema = z.object({
       description: z.string(),
       module_count: z.number(),
       completed_count: z.number(),
+      trust_label: z.string().nullable().optional(),
+      quran_foundation: z
+        .object({
+          verse_key: z.string(),
+          language: z.string(),
+          translation_id: z.number(),
+          tafsir_id: z.number(),
+          source_endpoint: z.string(),
+          translation_endpoint: z.string(),
+          tafsir_endpoint: z.string(),
+        })
+        .nullable()
+        .optional(),
     }),
   ),
 });
@@ -226,6 +252,18 @@ export async function getEducationStages(): Promise<EducationStage[]> {
         description: stage.description,
         moduleCount: stage.module_count,
         completedCount: stage.completed_count,
+        trustLabel: stage.trust_label ?? null,
+        quranFoundation: stage.quran_foundation
+          ? {
+              verseKey: stage.quran_foundation.verse_key,
+              language: stage.quran_foundation.language,
+              translationId: stage.quran_foundation.translation_id,
+              tafsirId: stage.quran_foundation.tafsir_id,
+              sourceEndpoint: stage.quran_foundation.source_endpoint,
+              translationEndpoint: stage.quran_foundation.translation_endpoint,
+              tafsirEndpoint: stage.quran_foundation.tafsir_endpoint,
+            }
+          : null,
       }),
     );
   } catch (error) {
