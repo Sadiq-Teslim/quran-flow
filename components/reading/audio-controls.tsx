@@ -20,9 +20,11 @@ import { cn } from "@/lib/utils";
 type AudioItem = {
   id: string;
   label: string;
+  loadingLabel: string;
   kind: "arabic" | "tts";
   text?: string;
   translate?: boolean;
+  source?: "verified" | "generated" | "recitation";
 };
 
 function findLocalization(
@@ -44,37 +46,87 @@ function buildItems(
   language: AudioLanguage,
   localizations?: VerseLocalization[],
 ) {
-  const translation =
+  const verifiedTranslation =
     language === "en"
       ? verse.translation
-      : findLocalization(localizations, language, ["translation"]) ??
-        findLocalization(localizations, language, ["explanation", "tafsir"]) ??
-        verse.translation;
+      : verse.localizedTranslations?.[language] ??
+        findLocalization(localizations, language, ["translation"]);
+  const translation = verifiedTranslation ?? verse.translation;
   const tafsir =
     findLocalization(localizations, language, ["tafsir", "explanation"]) ??
-    verse.lesson;
+    verse.tafsirSummary;
 
   const items: AudioItem[] = [
-    { id: "arabic", label: "Arabic recitation", kind: "arabic" },
+    {
+      id: "arabic",
+      label: "Arabic recitation",
+      loadingLabel: "Preparing Arabic recitation...",
+      kind: "arabic",
+      source: "recitation",
+    },
     {
       id: "translation",
       label: `${audioLanguageLabels[language]} translation`,
+      loadingLabel: `Preparing ${audioLanguageLabels[language]} translation...`,
       kind: "tts",
       text: translation,
-      translate: language !== "en",
+      translate: language !== "en" && !verifiedTranslation,
+      source: verifiedTranslation ? "verified" : "generated",
     },
     {
       id: "transliteration",
       label: "Transliteration",
+      loadingLabel: "Preparing Arabic recitation...",
       kind: "arabic",
       text: verse.transliteration,
+      source: "recitation",
     },
   ];
 
-  if (tafsir) items.push({ id: "tafsir", label: "Tafsir summary", kind: "tts", text: tafsir, translate: language !== "en" });
-  if (verse.lesson) items.push({ id: "lesson", label: "Key lesson", kind: "tts", text: verse.lesson, translate: language !== "en" });
-  if (verse.takeaway) items.push({ id: "takeaway", label: "Action step", kind: "tts", text: verse.takeaway, translate: language !== "en" });
-  if (verse.relatedDua) items.push({ id: "dua", label: "Related dua", kind: "tts", text: verse.relatedDua, translate: language !== "en" });
+  if (tafsir) {
+    items.push({
+      id: "tafsir",
+      label: "Tafsir summary",
+      loadingLabel: `Preparing ${audioLanguageLabels[language]} tafsir audio...`,
+      kind: "tts",
+      text: tafsir,
+      translate: language !== "en",
+      source: "verified",
+    });
+  }
+  if (verse.lesson) {
+    items.push({
+      id: "lesson",
+      label: "Key lesson",
+      loadingLabel: `Preparing ${audioLanguageLabels[language]} key lesson...`,
+      kind: "tts",
+      text: verse.lesson,
+      translate: language !== "en",
+      source: "generated",
+    });
+  }
+  if (verse.takeaway) {
+    items.push({
+      id: "takeaway",
+      label: "Action step",
+      loadingLabel: `Preparing ${audioLanguageLabels[language]} action step...`,
+      kind: "tts",
+      text: verse.takeaway,
+      translate: language !== "en",
+      source: "generated",
+    });
+  }
+  if (verse.relatedDua) {
+    items.push({
+      id: "dua",
+      label: "Related dua",
+      loadingLabel: `Preparing ${audioLanguageLabels[language]} dua audio...`,
+      kind: "tts",
+      text: verse.relatedDua,
+      translate: language !== "en",
+      source: "generated",
+    });
+  }
 
   return items.filter((item) => item.kind === "arabic" || item.text?.trim());
 }
@@ -91,6 +143,7 @@ export function AudioControls({
   const { language, label, setLanguage } = useAudioLanguage();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -119,6 +172,7 @@ export function AudioControls({
 
       setActiveId(item.id);
       setLoadingId(item.id);
+      setStatusText(item.loadingLabel);
       setIsPlaying(false);
       const audioUrl =
         item.kind === "arabic"
@@ -134,26 +188,30 @@ export function AudioControls({
       audioRef.current = audio;
       audio.onended = () => {
         setLoadingId(null);
+        setStatusText(null);
         setIsPlaying(false);
         setActiveId(null);
         cleanupObjectUrl();
       };
       audio.onerror = () => {
         setLoadingId(null);
+        setStatusText(null);
         setIsPlaying(false);
         setActiveId(null);
         cleanupObjectUrl();
-        toast.error("Audio isn't available right now.");
+        toast.error("Couldn't prepare this audio. Try English for now.");
       };
       await audio.play();
       setLoadingId(null);
+      setStatusText(`Playing ${item.label.toLowerCase()}.`);
       setIsPlaying(true);
     } catch (error) {
       setLoadingId(null);
+      setStatusText(null);
       setIsPlaying(false);
       setActiveId(null);
       cleanupObjectUrl();
-      toast.error(error instanceof Error ? error.message : "Audio isn't available right now.");
+      toast.error(error instanceof Error ? error.message : "Couldn't prepare this audio. Try English for now.");
     }
   }
 
@@ -199,13 +257,18 @@ export function AudioControls({
               ) : (
                 <Play className="size-4" aria-hidden />
               )}
-              {loading ? "Preparing..." : item.label}
+              {loading ? item.loadingLabel : item.label}
             </Button>
           );
         })}
       </div>
+      {statusText ? (
+        <p className="text-xs leading-relaxed text-muted-foreground" aria-live="polite">
+          {statusText}
+        </p>
+      ) : null}
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Translation and notes use {label}. Arabic and transliteration use Mishary Alafasy recitation.
+        Yoruba and Hausa verse translations use Quran translation resources when available. Igbo and notes are prepared in {label}. Arabic and transliteration use Mishary Alafasy recitation.
       </p>
     </Card>
   );

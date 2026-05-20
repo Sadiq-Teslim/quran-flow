@@ -4,6 +4,7 @@ import type { AudioLanguage } from "@/lib/audio/preferences";
 import { yarnVoiceByLanguage } from "@/lib/audio/preferences";
 
 const AUDIO_CACHE_NAME = "quranflow-tts-v1";
+const QURAN_AUDIO_CACHE_NAME = "quranflow-quran-audio-v1";
 const TRANSLATION_CACHE_NAME = "quranflow-audio-translations-v1";
 
 async function sha256(input: string) {
@@ -17,6 +18,20 @@ async function sha256(input: string) {
 async function responseToObjectUrl(response: Response) {
   const blob = await response.blob();
   return URL.createObjectURL(blob);
+}
+
+async function cachedAudioObjectUrl(cacheName: string, cacheUrl: string, request: () => Promise<Response>) {
+  if ("caches" in window) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(cacheUrl);
+    if (cached) return responseToObjectUrl(cached);
+
+    const response = await request();
+    await cache.put(cacheUrl, response.clone());
+    return responseToObjectUrl(response);
+  }
+
+  return responseToObjectUrl(await request());
 }
 
 export async function getYarnTtsAudioUrl(input: {
@@ -34,11 +49,7 @@ export async function getYarnTtsAudioUrl(input: {
   const key = await sha256(`${input.language}:${voice}:${cleanText}`);
   const cacheUrl = `${location.origin}/quranflow-audio-cache/${key}.mp3`;
 
-  if ("caches" in window) {
-    const cache = await caches.open(AUDIO_CACHE_NAME);
-    const cached = await cache.match(cacheUrl);
-    if (cached) return responseToObjectUrl(cached);
-
+  return cachedAudioObjectUrl(AUDIO_CACHE_NAME, cacheUrl, async () => {
     const response = await fetch("/api/audio/tts", {
       method: "POST",
       headers: {
@@ -54,26 +65,8 @@ export async function getYarnTtsAudioUrl(input: {
     });
 
     if (!response.ok) throw new Error("Audio is not available right now.");
-    await cache.put(cacheUrl, response.clone());
-    return responseToObjectUrl(response);
-  }
-
-  const response = await fetch("/api/audio/tts", {
-    method: "POST",
-    headers: {
-      Accept: "audio/mpeg",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      text: cleanText,
-      language: input.language,
-      voice,
-      responseFormat: "mp3",
-    }),
+    return response;
   });
-
-  if (!response.ok) throw new Error("Audio is not available right now.");
-  return responseToObjectUrl(response);
 }
 
 async function translateForAudio(text: string, language: Exclude<AudioLanguage, "en">) {
@@ -125,11 +118,14 @@ export async function getArabicVerseAudioUrl(input: {
   surah: number;
   ayah: number;
 }) {
-  const response = await fetch(
-    `/api/audio/quran?surah=${input.surah}&ayah=${input.ayah}&reciter=ar.alafasy`,
-  );
-  if (!response.ok) throw new Error("Arabic recitation is not available right now.");
-  const data = (await response.json()) as { audioUrl?: string };
-  if (!data.audioUrl) throw new Error("Arabic recitation is not available right now.");
-  return data.audioUrl;
+  const key = await sha256(`ar.alafasy:${input.surah}:${input.ayah}`);
+  const cacheUrl = `${location.origin}/quranflow-recitation-cache/${key}.mp3`;
+  return cachedAudioObjectUrl(QURAN_AUDIO_CACHE_NAME, cacheUrl, async () => {
+    const response = await fetch(
+      `/api/audio/quran?surah=${input.surah}&ayah=${input.ayah}&reciter=ar.alafasy&format=audio`,
+      { headers: { Accept: "audio/mpeg" } },
+    );
+    if (!response.ok) throw new Error("Arabic recitation is not available right now.");
+    return response;
+  });
 }

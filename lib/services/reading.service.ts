@@ -5,6 +5,10 @@ import { simulateNetwork } from "@/lib/mocks/delay";
 
 const DEFAULT_TRANSLATION_ID = 20;
 const DEFAULT_TAFSIR_ID = 169;
+const LOCALIZED_TRANSLATION_IDS = {
+  yo: 125,
+  ha: 32,
+} as const;
 
 export const VerseSchema = z.object({
   id: z.number().optional(),
@@ -14,6 +18,8 @@ export const VerseSchema = z.object({
   arabic: z.string(),
   transliteration: z.string(),
   translation: z.string(),
+  localizedTranslations: z.record(z.string(), z.string()).optional(),
+  tafsirSummary: z.string().optional(),
   lesson: z.string().optional(),
   takeaway: z.string().optional(),
   relatedDua: z.string().optional(),
@@ -152,6 +158,12 @@ const ApiReadingSessionsSchema = z.object({
   items: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
+const ApiAiVerseExplanationSchema = z.object({
+  explanation: z.string().nullable().optional(),
+  key_lesson: z.string().nullable().optional(),
+  lesson: z.string().nullable().optional(),
+});
+
 type ApiChapter = z.infer<typeof ApiChapterSchema>;
 type ApiScriptVerse = z.infer<typeof ApiScriptVerseSchema>;
 
@@ -229,8 +241,62 @@ async function getTafsir(verseKey: string) {
   return stripHtml(response.tafsir?.text);
 }
 
+async function getLocalizedTranslations(verseKey: string) {
+  const entries = await Promise.all(
+    Object.entries(LOCALIZED_TRANSLATION_IDS).map(async ([language, resourceId]) => {
+      try {
+        const response = ApiTranslationsSchema.parse(
+          await apiFetch<unknown>(
+            `/api/v1/quran/translations/${resourceId}/by_ayah/${verseKey}`,
+          ),
+        );
+        const text = stripHtml(response.translations[0]?.text);
+        return text ? [language, text] : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return Object.fromEntries(entries.filter(Boolean) as [string, string][]);
+}
+
+function buildFallbackKeyLesson(translation: string, tafsir: string) {
+  const source = tafsir || translation;
+  if (!source) return undefined;
+  const firstSentence = source
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .find((sentence) => sentence.length > 35);
+  if (!firstSentence) return undefined;
+  return firstSentence.slice(0, 220);
+}
+
+async function getAiKeyLesson(verseKey: string, translation: string, tafsir: string) {
+  if (!hasAccessToken()) return buildFallbackKeyLesson(translation, tafsir);
+  try {
+    const response = ApiAiVerseExplanationSchema.parse(
+      await apiFetch<unknown>("/api/v1/ai/explain-verse", {
+        auth: true,
+        method: "POST",
+        body: JSON.stringify({
+          verse_key: verseKey,
+          source_payload: {
+            translation,
+            tafsir,
+          },
+        }),
+      }),
+    );
+    const lesson = response.key_lesson ?? response.lesson ?? response.explanation;
+    if (lesson && !/must cite verified/i.test(lesson)) return stripHtml(lesson).slice(0, 300);
+  } catch {
+    // Fall through to a source-grounded local summary when the AI service is unavailable.
+  }
+  return buildFallbackKeyLesson(translation, tafsir);
+}
+
 async function mapVerseByKey(verseKey: string): Promise<Verse> {
-  const [{ verse }, chapter, script, translation, tafsir] = await Promise.all([
+  const [{ verse }, chapter, script, translation, tafsir, localizedTranslations] = await Promise.all([
     ApiVerseByKeySchema.parse(
       await apiFetch<unknown>(
         `/api/v1/quran/verses/by_key/${verseKey}?words=true`,
@@ -240,6 +306,7 @@ async function mapVerseByKey(verseKey: string): Promise<Verse> {
     getChapterScript(parseVerseKey(verseKey).surah),
     getTranslation(verseKey),
     getTafsir(verseKey).catch(() => ""),
+    getLocalizedTranslations(verseKey),
   ]);
   const { surah, ayah } = parseVerseKey(verse.verse_key);
   const scriptVerse = script.find((item) => item.verse_key === verse.verse_key);
@@ -261,7 +328,9 @@ async function mapVerseByKey(verseKey: string): Promise<Verse> {
     arabic,
     transliteration,
     translation,
-    lesson: tafsir ? tafsir.slice(0, 700) : undefined,
+    localizedTranslations,
+    tafsirSummary: tafsir ? tafsir.slice(0, 900) : undefined,
+    lesson: await getAiKeyLesson(verseKey, translation, tafsir),
   });
 }
 
