@@ -13,15 +13,6 @@ import { StreakRing } from "@/components/streak-ring";
 import { WeekDots } from "@/components/week-dots";
 import { DayPlanCard } from "@/components/day-plan-card";
 
-function timeOfDayGreeting() {
-  const h = new Date().getHours();
-  if (h < 5) return "Peace upon your night";
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  if (h < 20) return "Good evening";
-  return "Peace upon your night";
-}
-
 export default function HomePage() {
   const user = useUser();
   const streak = useStreak();
@@ -41,8 +32,8 @@ export default function HomePage() {
         ) : (
           <h1 className="font-serif text-3xl leading-tight tracking-tight">
             {!user.data || user.data.isAnonymous
-              ? `${timeOfDayGreeting()}.`
-              : `${timeOfDayGreeting()}, ${user.data?.name}.`}
+              ? "Welcome."
+              : user.data.name}
           </h1>
         )}
         {user.data?.identity ? (
