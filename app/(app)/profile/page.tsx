@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useTheme } from "next-themes";
 import {
   Activity,
@@ -22,12 +21,10 @@ import {
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { toast } from "sonner";
 import { ScreenHeader } from "@/components/nav/screen-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IdentityBadge } from "@/components/identity-badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -103,7 +100,7 @@ export default function ProfilePage() {
           }
         />
 
-        {isAccountConnected ? <SecurityPanel auth={auth} /> : null}
+        {isAccountConnected ? <SecurityPanel /> : null}
 
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -224,43 +221,7 @@ export default function ProfilePage() {
   );
 }
 
-function SecurityPanel({ auth }: { auth: ReturnType<typeof useAuth> }) {
-  const [setup, setSetup] = useState<{
-    qr_code: string;
-    secret: string;
-    otpauth_uri_account: string;
-  } | null>(null);
-  const [code, setCode] = useState("");
-
-  async function handleEnable() {
-    try {
-      setSetup(await auth.enable2FA.mutateAsync());
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't start 2FA.");
-    }
-  }
-
-  async function handleConfirm() {
-    if (!setup || code.length !== 6) return;
-    try {
-      await auth.confirm2FA.mutateAsync({ code, secret: setup.secret });
-      setSetup(null);
-      setCode("");
-      toast.success("2FA enabled.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't confirm 2FA.");
-    }
-  }
-
-  async function handleDisable() {
-    try {
-      await auth.disable2FA.mutateAsync();
-      toast.success("2FA disabled.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't disable 2FA.");
-    }
-  }
-
+function SecurityPanel() {
   return (
     <section className="space-y-3">
       <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -270,58 +231,13 @@ function SecurityPanel({ auth }: { auth: ReturnType<typeof useAuth> }) {
         <div className="flex items-start gap-4">
           <LockKeyhole className="mt-0.5 size-5 text-muted-foreground" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="font-medium leading-tight">Two-factor authentication</p>
+            <p className="font-medium leading-tight">Account protection</p>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Add an extra layer of protection to your QuranFlow account.
+              Your account is protected with password sign-in. More security
+              options will appear here when they are ready for you.
             </p>
           </div>
         </div>
-        {setup ? (
-          <div className="mt-4 space-y-3">
-            <Image
-              src={setup.qr_code}
-              alt="2FA QR code"
-              width={176}
-              height={176}
-              unoptimized
-              className="mx-auto size-44 rounded-lg border border-border bg-white p-2"
-            />
-            <p className="break-all text-center text-xs text-muted-foreground">
-              {setup.secret}
-            </p>
-            <Input
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="6-digit code"
-              inputMode="numeric"
-              maxLength={6}
-            />
-            <Button
-              className="w-full"
-              disabled={auth.confirm2FA.isPending || code.length !== 6}
-              onClick={handleConfirm}
-            >
-              Confirm 2FA
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Button
-              variant="secondary"
-              disabled={auth.enable2FA.isPending}
-              onClick={handleEnable}
-            >
-              Enable
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={auth.disable2FA.isPending}
-              onClick={handleDisable}
-            >
-              Disable
-            </Button>
-          </div>
-        )}
       </Card>
     </section>
   );

@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, hasAccessToken } from "@/lib/api/client";
 import { startAnonymousSession } from "@/lib/services/auth.service";
 
-function BackendSessionBootstrap() {
+function AccountSessionBootstrap() {
   const booted = useRef(false);
   const client = useQueryClient();
 
@@ -22,7 +22,7 @@ function BackendSessionBootstrap() {
     startAnonymousSession()
       .then(() => client.invalidateQueries())
       .catch((error) => {
-        console.warn("QuranFlow anonymous backend session failed", error);
+        console.warn("QuranFlow session setup failed", error);
       });
   }, [client]);
 
@@ -56,7 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <QueryClientProvider client={client}>
-        <BackendSessionBootstrap />
+        <AccountSessionBootstrap />
         {children}
         <Toaster
           position="top-center"

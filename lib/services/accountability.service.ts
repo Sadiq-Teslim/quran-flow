@@ -58,7 +58,7 @@ export async function requestPartner(criteria: string[]) {
 
 export async function acceptPartner(id: string) {
   void id;
-  throw new Error("Partner accept is not available on the new backend yet.");
+  throw new Error("Partner responses are not ready yet.");
 }
 
 export async function endPartner(id: string) {

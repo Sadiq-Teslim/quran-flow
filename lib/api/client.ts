@@ -152,7 +152,7 @@ export async function apiFetch<T>(
     : await response.text();
 
   if (!response.ok) {
-    const message = errorMessage(payload, response.status);
+    const message = errorMessage(payload);
     if (auth && response.status === 401 && retryOnUnauthorized) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
@@ -231,17 +231,17 @@ function unwrapPayload<T>(payload: unknown): T {
   ) {
     const envelope = payload as ApiEnvelope<T>;
     if (Array.isArray(envelope.errors) && envelope.errors.length > 0) {
-      throw new ApiError("QuranFlow API returned errors.", 200, payload);
+      throw new ApiError("QuranFlow could not complete that request.", 200, payload);
     }
     return envelope.data as T;
   }
   return payload as T;
 }
 
-function errorMessage(payload: unknown, status: number) {
+function errorMessage(payload: unknown) {
   if (typeof payload === "string" && payload.trim()) return payload;
   if (typeof payload !== "object" || payload === null) {
-    return `QuranFlow API request failed with ${status}`;
+    return `QuranFlow could not complete that request.`;
   }
 
   const obj = payload as Record<string, unknown>;
@@ -262,5 +262,5 @@ function errorMessage(payload: unknown, status: number) {
   }
   if (typeof obj.message === "string") return obj.message;
 
-  return `QuranFlow API request failed with ${status}`;
+  return `QuranFlow could not complete that request.`;
 }

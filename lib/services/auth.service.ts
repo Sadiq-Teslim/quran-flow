@@ -90,14 +90,14 @@ export async function logout() {
 }
 
 export async function enable2FA(): Promise<Enable2FAResponse> {
-  throw new Error("Two-factor authentication is not available on the new backend yet.");
+  throw new Error("Extra account protection is not ready yet.");
 }
 
 export async function confirm2FA(input: { code: string; secret: string }): Promise<{ ok: true }> {
   void input;
-  throw new Error("Two-factor authentication is not available on the new backend yet.");
+  throw new Error("Extra account protection is not ready yet.");
 }
 
 export async function disable2FA(): Promise<{ ok: true }> {
-  throw new Error("Two-factor authentication is not available on the new backend yet.");
+  throw new Error("Extra account protection is not ready yet.");
 }
