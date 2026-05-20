@@ -8,6 +8,8 @@ export const GeneratedPlanSchema = z.object({
   versesPerDay: z.number(),
   difficultyLevel: z.string(),
   readingTime: z.string(),
+  recommendation: z.string().nullable().optional(),
+  trustLabel: z.string().nullable().optional(),
 });
 export type GeneratedPlan = z.infer<typeof GeneratedPlanSchema>;
 
@@ -32,8 +34,12 @@ const ApiGeneratedPlanSchema = z.object({
   name: z.string().optional(),
   plan_type: z.string().optional(),
   verses_per_day: z.number().optional(),
+  verses: z.number().optional(),
   difficulty_level: z.string().optional(),
   reading_time: z.string().optional(),
+  minutes: z.number().optional(),
+  recommendation: z.string().nullable().optional(),
+  trust_label: z.string().nullable().optional(),
 });
 
 const ApiModuleSchema = z.object({
@@ -53,9 +59,11 @@ function mapPlan(plan: z.infer<typeof ApiGeneratedPlanSchema>) {
     id: plan.id ?? `plan_${Date.now()}`,
     name: plan.name ?? "QuranFlow Daily Plan",
     planType: plan.plan_type ?? "daily",
-    versesPerDay: plan.verses_per_day ?? 3,
+    versesPerDay: plan.verses_per_day ?? plan.verses ?? 3,
     difficultyLevel: plan.difficulty_level ?? "gentle",
-    readingTime: plan.reading_time ?? "fajr",
+    readingTime: plan.reading_time ?? `${plan.minutes ?? 5} minutes`,
+    recommendation: plan.recommendation ?? null,
+    trustLabel: plan.trust_label ?? null,
   });
 }
 
@@ -118,9 +126,9 @@ export async function personalize(input?: { planName?: string; recommendationLim
   const plan = mapPlan(
     ApiGeneratedPlanSchema.parse(
       await apiFetch<unknown>("/api/v1/ai/personalized-plan", {
-      auth: true,
-      method: "POST",
-    }),
+        auth: true,
+        method: "POST",
+      }),
     ),
   );
   const recommendations = await getRecommendations(input?.recommendationLimit ?? 3);

@@ -106,7 +106,7 @@ export default function ProfileStep() {
                 <div className="flex items-center gap-2 text-accent">
                   <Sparkles className="size-4" aria-hidden />
                   <span className="text-xs font-semibold uppercase tracking-wider">
-                    Backend-personalized
+                    AI-personalized
                   </span>
                 </div>
                 <p className="mt-3 font-serif text-2xl leading-tight">
