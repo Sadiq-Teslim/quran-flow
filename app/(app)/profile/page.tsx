@@ -37,7 +37,6 @@ import {
   type AudioLanguage,
   useAudioLanguage,
 } from "@/lib/audio/preferences";
-import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
@@ -96,13 +95,9 @@ export default function ProfilePage() {
 
         <AuthPanel
           isAuthenticated={isAccountConnected}
-          onLogin={auth.login.mutateAsync}
-          onSignup={auth.signup.mutateAsync}
           onLogout={auth.logout.mutateAsync}
           onAnonymous={auth.anonymous.mutateAsync}
           isPending={
-            auth.login.isPending ||
-            auth.signup.isPending ||
             auth.logout.isPending ||
             auth.anonymous.isPending
           }
@@ -332,62 +327,17 @@ function SecurityPanel({ auth }: { auth: ReturnType<typeof useAuth> }) {
   );
 }
 
-type AuthMode = "login" | "signup";
-
 function AuthPanel({
   isAuthenticated,
   isPending,
-  onLogin,
-  onSignup,
   onLogout,
   onAnonymous,
 }: {
   isAuthenticated: boolean;
   isPending: boolean;
-  onLogin: (payload: { email: string; password: string }) => Promise<unknown>;
-  onSignup: (payload: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    userType: string;
-  }) => Promise<unknown>;
   onLogout: () => Promise<unknown>;
   onAnonymous: () => Promise<unknown>;
 }) {
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      if (mode === "login") {
-        await onLogin({ email: email.trim(), password });
-        toast.success("You're connected.");
-      } else {
-        await onSignup({
-          email: email.trim(),
-          password,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          userType: "beginner",
-        });
-        toast.success("Account created and connected.");
-      }
-    } catch (error) {
-      if (mode === "signup" && error instanceof ApiError && error.status === 409) {
-        setMode("login");
-        toast.error("That email already has an account. Sign in instead.");
-        return;
-      }
-
-      toast.error(error instanceof Error ? error.message : "Authentication failed.");
-    }
-  }
-
   async function handleLogout() {
     try {
       await onLogout();
@@ -443,79 +393,24 @@ function AuthPanel({
         Account
       </h2>
       <Card className="p-5">
-        <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary/50 p-1">
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className={cn(
-              "flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors",
-              mode === "login" ? "bg-background shadow-sm" : "text-muted-foreground",
-            )}
-          >
-            <LogIn className="size-4" aria-hidden />
-            Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("signup")}
-            className={cn(
-              "flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors",
-              mode === "signup" ? "bg-background shadow-sm" : "text-muted-foreground",
-            )}
-          >
-            <UserPlus className="size-4" aria-hidden />
-            Sign up
-          </button>
-        </div>
-
-        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Sign in to continue your QuranFlow journey across devices.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Sign in to keep your reading plan, reflections, and progress connected
+          across devices.
         </p>
-
-        <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-          {mode === "signup" ? (
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                placeholder="First name"
-                autoComplete="given-name"
-                required
-              />
-              <Input
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                placeholder="Last name"
-                autoComplete="family-name"
-                required
-              />
-            </div>
-          ) : null}
-          <Input
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Email"
-            type="email"
-            autoComplete="email"
-            required
-          />
-          <Input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={mode === "signup" ? "Password, at least 8 characters" : "Password"}
-            type="password"
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            minLength={mode === "signup" ? 8 : 1}
-            required
-          />
-          <Button className="w-full" disabled={isPending} type="submit">
-            {isPending
-              ? "Connecting..."
-              : mode === "signup"
-                ? "Create account"
-                : "Login"}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Button asChild>
+            <Link href="/login?next=%2Fprofile">
+              <LogIn className="size-4" aria-hidden />
+              Sign in
+            </Link>
           </Button>
-        </form>
+          <Button asChild variant="secondary">
+            <Link href="/signup?next=%2Fprofile">
+              <UserPlus className="size-4" aria-hidden />
+              Create account
+            </Link>
+          </Button>
+        </div>
         <Button
           variant="ghost"
           className="mt-3 w-full"
