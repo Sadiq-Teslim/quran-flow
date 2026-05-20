@@ -36,7 +36,7 @@ function NewReflectionForm() {
   }
 
   return (
-    <div className="pb-32">
+    <div className="pb-44">
       <ScreenHeader
         title="New reflection"
         back
@@ -76,7 +76,10 @@ function NewReflectionForm() {
           />
         </div>
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[480px] border-t border-border/60 bg-background/95 p-4 backdrop-blur">
+      <div
+        className="fixed inset-x-0 z-30 mx-auto max-w-[480px] border-t border-border/60 bg-background/95 p-4 backdrop-blur"
+        style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+      >
         <Button
           size="xl"
           className="w-full"
