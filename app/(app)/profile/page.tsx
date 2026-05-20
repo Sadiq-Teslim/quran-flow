@@ -46,6 +46,8 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const audioLanguage = useAudioLanguage();
   const isDark = theme === "dark";
+  const isAccountLoading = user.isLoading && !user.data;
+  const isAccountConnected = Boolean(user.data) || auth.isAuthenticated;
 
   return (
     <div className="pb-6">
@@ -60,19 +62,26 @@ export default function ProfilePage() {
               {user.data?.name?.[0] ?? "Q"}
             </div>
             <div className="min-w-0 flex-1">
-              {user.isLoading || !user.data ? (
+              {isAccountLoading ? (
                 <>
                   <Skeleton className="h-5 w-24" />
                   <Skeleton className="mt-2 h-4 w-40" />
                 </>
-              ) : (
+              ) : user.data ? (
                 <>
                   <p className="font-serif text-lg leading-tight">{user.data.name}</p>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {user.data.email}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {auth.isAuthenticated ? "Your QuranFlow account" : "Local profile"}
+                    {user.data.isAnonymous ? "Private session" : "Your QuranFlow account"}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-serif text-lg leading-tight">QuranFlow account</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Sign in to save and continue your journey.
                   </p>
                 </>
               )}
@@ -86,7 +95,7 @@ export default function ProfilePage() {
         </Card>
 
         <AuthPanel
-          isAuthenticated={auth.isAuthenticated}
+          isAuthenticated={isAccountConnected}
           onLogin={auth.login.mutateAsync}
           onSignup={auth.signup.mutateAsync}
           onLogout={auth.logout.mutateAsync}
@@ -99,7 +108,7 @@ export default function ProfilePage() {
           }
         />
 
-        {auth.isAuthenticated ? <SecurityPanel auth={auth} /> : null}
+        {isAccountConnected ? <SecurityPanel auth={auth} /> : null}
 
         <section className="space-y-3">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

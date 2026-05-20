@@ -182,7 +182,11 @@ async function refreshAccessToken() {
   }
 
   try {
-    const response = await apiFetch<{ access_token: string; refresh_token?: string }>(
+    const response = await apiFetch<{
+      access_token?: string;
+      refresh_token?: string;
+      session_token?: string;
+    }>(
       "/api/v1/auth/refresh",
       {
         method: "POST",
@@ -190,10 +194,16 @@ async function refreshAccessToken() {
         retryOnUnauthorized: false,
       },
     );
-    storeAccessToken(response.access_token);
-    if (response.refresh_token) {
-      storeAuthTokens(response);
+    const accessToken = response.access_token ?? response.session_token;
+    const nextRefreshToken = response.refresh_token ?? response.session_token;
+    if (!accessToken) {
+      clearAuthTokens();
+      return false;
     }
+    storeAuthTokens({
+      access_token: accessToken,
+      refresh_token: nextRefreshToken,
+    });
     return true;
   } catch {
     clearAuthTokens();
