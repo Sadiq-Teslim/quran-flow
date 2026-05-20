@@ -32,8 +32,8 @@ export default function HomePage() {
         ) : (
           <h1 className="font-serif text-3xl leading-tight tracking-tight">
             {!user.data || user.data.isAnonymous
-              ? "Welcome."
-              : user.data.name}
+              ? "As-salamu alaykum."
+              : `As-salamu alaykum, ${user.data.name}.`}
           </h1>
         )}
         {user.data?.identity ? (
