@@ -68,6 +68,10 @@ const ApiModuleSchema = z.object({
   completed: z.boolean().optional(),
 });
 
+const ApiLessonResponseSchema = z.object({
+  lesson: ApiModuleSchema,
+});
+
 const ApiStagesSchema = z.object({
   stages: z.array(
     z.object({
@@ -202,9 +206,10 @@ export async function getLesson(
   id: string,
 ): Promise<Lesson & { completed: boolean }> {
   try {
-    const lessonModule = ApiModuleSchema.parse(
-      await apiFetch<unknown>(`/api/v1/education/lessons/${id}`),
-    );
+    const response = await apiFetch<unknown>(`/api/v1/education/lessons/${id}`);
+    const lessonModule = ApiLessonResponseSchema.safeParse(response).success
+      ? ApiLessonResponseSchema.parse(response).lesson
+      : ApiModuleSchema.parse(response);
     const completedIds = await getRemoteCompletedLessonIds();
     return { ...mapApiModule(lessonModule), completed: completedIds.includes(id) };
   } catch {

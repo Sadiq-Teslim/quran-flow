@@ -33,7 +33,18 @@ export default function LessonPage({
     <div className="pb-44">
       <ScreenHeader title="Lesson" back />
       <div className="space-y-6 px-5 pr-14 sm:px-6">
-        {lesson.isLoading || !lesson.data ? (
+        {lesson.isError ? (
+          <div className="rounded-lg border border-dashed border-border/60 bg-card/50 p-6 text-center">
+            <p className="font-serif text-lg">This lesson didn&apos;t load.</p>
+            <Button
+              variant="ghost"
+              className="mt-3"
+              onClick={() => lesson.refetch()}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : lesson.isLoading || !lesson.data ? (
           <div className="space-y-4">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-10 w-full" />
