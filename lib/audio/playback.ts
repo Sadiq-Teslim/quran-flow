@@ -4,6 +4,7 @@ import type { AudioLanguage } from "@/lib/audio/preferences";
 import { yarnVoiceByLanguage } from "@/lib/audio/preferences";
 
 const AUDIO_CACHE_NAME = "quranflow-tts-v1";
+const TRANSLATION_CACHE_NAME = "quranflow-audio-translations-v1";
 
 async function sha256(input: string) {
   const data = new TextEncoder().encode(input);
@@ -21,8 +22,12 @@ async function responseToObjectUrl(response: Response) {
 export async function getYarnTtsAudioUrl(input: {
   text: string;
   language: AudioLanguage;
+  translate?: boolean;
 }) {
-  const cleanText = input.text.trim().slice(0, 2000);
+  const cleanText =
+    input.translate && input.language !== "en"
+      ? await translateForAudio(input.text, input.language)
+      : input.text.trim().slice(0, 2000);
   if (!cleanText) throw new Error("There is nothing to play.");
 
   const voice = yarnVoiceByLanguage[input.language];
@@ -69,6 +74,51 @@ export async function getYarnTtsAudioUrl(input: {
 
   if (!response.ok) throw new Error("Audio is not available right now.");
   return responseToObjectUrl(response);
+}
+
+async function translateForAudio(text: string, language: Exclude<AudioLanguage, "en">) {
+  const cleanText = text.trim().slice(0, 2000);
+  if (!cleanText) return "";
+
+  const key = await sha256(`en:${language}:${cleanText}`);
+  const cacheUrl = `${location.origin}/quranflow-translation-cache/${key}.json`;
+
+  if ("caches" in window) {
+    const cache = await caches.open(TRANSLATION_CACHE_NAME);
+    const cached = await cache.match(cacheUrl);
+    if (cached) {
+      const data = (await cached.json()) as { translatedText?: string };
+      if (data.translatedText) return data.translatedText;
+    }
+
+    const response = await requestTranslation(cleanText, language);
+    await cache.put(cacheUrl, response.clone());
+    const data = (await response.json()) as { translatedText?: string };
+    if (data.translatedText) return data.translatedText;
+    throw new Error("Translation is not available right now.");
+  }
+
+  const response = await requestTranslation(cleanText, language);
+  const data = (await response.json()) as { translatedText?: string };
+  if (data.translatedText) return data.translatedText;
+  throw new Error("Translation is not available right now.");
+}
+
+async function requestTranslation(text: string, language: Exclude<AudioLanguage, "en">) {
+  const response = await fetch("/api/audio/translate", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      targetLanguage: language,
+      sourceLanguage: "en",
+    }),
+  });
+  if (!response.ok) throw new Error("Translation is not available right now.");
+  return response;
 }
 
 export async function getArabicVerseAudioUrl(input: {

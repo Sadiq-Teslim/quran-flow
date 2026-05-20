@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pause, Play, Volume2 } from "lucide-react";
+import { Loader2, Pause, Play, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,7 @@ type AudioItem = {
   label: string;
   kind: "arabic" | "tts";
   text?: string;
+  translate?: boolean;
 };
 
 function findLocalization(
@@ -60,19 +61,20 @@ function buildItems(
       label: `${audioLanguageLabels[language]} translation`,
       kind: "tts",
       text: translation,
+      translate: language !== "en",
     },
     {
       id: "transliteration",
       label: "Transliteration",
-      kind: "tts",
+      kind: "arabic",
       text: verse.transliteration,
     },
   ];
 
-  if (tafsir) items.push({ id: "tafsir", label: "Tafsir summary", kind: "tts", text: tafsir });
-  if (verse.lesson) items.push({ id: "lesson", label: "Key lesson", kind: "tts", text: verse.lesson });
-  if (verse.takeaway) items.push({ id: "takeaway", label: "Action step", kind: "tts", text: verse.takeaway });
-  if (verse.relatedDua) items.push({ id: "dua", label: "Related dua", kind: "tts", text: verse.relatedDua });
+  if (tafsir) items.push({ id: "tafsir", label: "Tafsir summary", kind: "tts", text: tafsir, translate: language !== "en" });
+  if (verse.lesson) items.push({ id: "lesson", label: "Key lesson", kind: "tts", text: verse.lesson, translate: language !== "en" });
+  if (verse.takeaway) items.push({ id: "takeaway", label: "Action step", kind: "tts", text: verse.takeaway, translate: language !== "en" });
+  if (verse.relatedDua) items.push({ id: "dua", label: "Related dua", kind: "tts", text: verse.relatedDua, translate: language !== "en" });
 
   return items.filter((item) => item.kind === "arabic" || item.text?.trim());
 }
@@ -88,6 +90,7 @@ export function AudioControls({
 }) {
   const { language, label, setLanguage } = useAudioLanguage();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -115,29 +118,38 @@ export function AudioControls({
       cleanupObjectUrl();
 
       setActiveId(item.id);
+      setLoadingId(item.id);
       setIsPlaying(false);
       const audioUrl =
         item.kind === "arabic"
           ? await getArabicVerseAudioUrl({ surah: verse.surah, ayah: verse.ayah })
-          : await getYarnTtsAudioUrl({ text: item.text ?? "", language });
+          : await getYarnTtsAudioUrl({
+              text: item.text ?? "",
+              language,
+              translate: item.translate,
+            });
 
       if (item.kind === "tts") objectUrlRef.current = audioUrl;
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
       audio.onended = () => {
+        setLoadingId(null);
         setIsPlaying(false);
         setActiveId(null);
         cleanupObjectUrl();
       };
       audio.onerror = () => {
+        setLoadingId(null);
         setIsPlaying(false);
         setActiveId(null);
         cleanupObjectUrl();
         toast.error("Audio isn't available right now.");
       };
       await audio.play();
+      setLoadingId(null);
       setIsPlaying(true);
     } catch (error) {
+      setLoadingId(null);
       setIsPlaying(false);
       setActiveId(null);
       cleanupObjectUrl();
@@ -170,26 +182,30 @@ export function AudioControls({
       <div className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => {
           const playing = activeId === item.id && isPlaying;
+          const loading = loadingId === item.id;
           return (
             <Button
               key={item.id}
               type="button"
               variant={playing ? "default" : "secondary"}
               className="justify-start"
+              disabled={Boolean(loadingId) && !loading}
               onClick={() => playItem(item)}
             >
-              {playing ? (
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+              ) : playing ? (
                 <Pause className="size-4" aria-hidden />
               ) : (
                 <Play className="size-4" aria-hidden />
               )}
-              {item.label}
+              {loading ? "Preparing..." : item.label}
             </Button>
           );
         })}
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Non-Arabic audio uses {label}. Arabic uses Mishary Alafasy recitation.
+        Translation and notes use {label}. Arabic and transliteration use Mishary Alafasy recitation.
       </p>
     </Card>
   );

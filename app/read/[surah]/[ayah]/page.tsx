@@ -1,7 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PenLine } from "lucide-react";
 import { useVerse, useNextVerse, usePrevVerse } from "@/hooks/use-verse";
 import { useVerseLocalizations } from "@/hooks/use-quran";
@@ -20,11 +21,27 @@ export default function VersePage({
   const { surah: surahStr, ayah: ayahStr } = use(params);
   const surah = Number(surahStr);
   const ayah = Number(ayahStr);
+  const queryClient = useQueryClient();
 
   const verse = useVerse(surah, ayah);
   const next = useNextVerse(surah, ayah);
   const prev = usePrevVerse(surah, ayah);
   const localizations = useVerseLocalizations(verse.data?.id);
+
+  useEffect(() => {
+    if (next.data) {
+      queryClient.setQueryData(
+        ["verse", next.data.surah, next.data.ayah],
+        next.data,
+      );
+    }
+    if (prev.data) {
+      queryClient.setQueryData(
+        ["verse", prev.data.surah, prev.data.ayah],
+        prev.data,
+      );
+    }
+  }, [next.data, prev.data, queryClient]);
 
   return (
     <div className="mx-auto max-w-2xl px-5 pb-24 pt-6 sm:px-8">
@@ -80,7 +97,7 @@ export default function VersePage({
               className="flex-1"
             >
               {prev.data ? (
-                <Link href={`/read/${prev.data.surah}/${prev.data.ayah}`}>
+                <Link prefetch href={`/read/${prev.data.surah}/${prev.data.ayah}`}>
                   <ChevronLeft className="size-4" aria-hidden />
                   Previous
                 </Link>
@@ -90,7 +107,7 @@ export default function VersePage({
             </Button>
             <Button asChild size="lg" disabled={!next.data} className="flex-1">
               {next.data ? (
-                <Link href={`/read/${next.data.surah}/${next.data.ayah}`}>
+                <Link prefetch href={`/read/${next.data.surah}/${next.data.ayah}`}>
                   Next
                   <ChevronRight className="size-4" aria-hidden />
                 </Link>
